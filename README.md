@@ -33,10 +33,10 @@ TX ports: SMA connector
 
 13.8v DC @ 0.5A
 
-**Mechanical Specifications:***
+**Mechanical Specifications:**
 
- (approx. Weight)  
-Dimensions: 100mm (L) x 85mm (W) x 35mm (H)
+Weight: 100g (approx.)  
+Dimensions (two boards stacked): 100mm x 85mm x 35mm
 
 **Receiver Specifications:**
 
