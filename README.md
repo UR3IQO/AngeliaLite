@@ -15,58 +15,56 @@ The second board contains Eternet PHY, standard ALEX, OC, keyer and PTT interfac
 * The maximun supported output samplerate is 192kSPS
 * There is no audio CODEC on the boards
 * The Ethernet connection has 100Mbit/s speed
-* The ADC opaerates on the second Nyquist zone at the 50MHz band. The board has LPF filter with 65MHz cutoff frequency, so additional selectivity is needed to avoid images reception. It can be as simple as switchable 30MHz LPF and 50MHz bandpass filter.
+* The ADC opaerates on the second Nyquist zone on 50MHz band. The board has LPF filter with 65MHz cutoff frequency, so additional selectivity is needed to avoid images reception. It can be as simple as switchable 30MHz LPF and 50MHz bandpass filter.
 * There is no TX power amplifier at the DAC output - just an LPF filter-diplexer. So, you will need some amplfication/filtering in the TX path.
 
 The SDR operates with the ***SDR Console v3*** and ***Thetis***.
 
 # **Specifications**
-**General:**
+**General**| |
+-|-|
+Architecture | *Direct Sampling DDC/DUC Transceiver*  |
+Interface | *Ethernet (100Mb/s)*  
+TCXO Stability | *±0.5 PPM*  
+RX ports | *Two SMA connectors (each ADC has dedicated input)*  
+TX ports | *SMA connector* 
 
-Architecture: Direct Sampling DDC/DUC Transceiver  
-Interface: Ethernet (100Mb/s)  
-TCXO Stability: ±0.5 PPM  
-RX ports: Two SMA connectors (each ADC has dedicated input)  
-TX ports: SMA connector 
+**Electrical**|
+-|
+13.8v DC @ 0.5A|
 
-**Electrical Specifications:**
+**Mechanical** | |
+-|-|
+Weight | *100g (approx.)*  
+Dimensions (two boards stacked) | *100mm x 85mm x 35mm*
 
-13.8v DC @ 0.5A
+**Receiver**| |
+-|-|
+Receiver Architecture | *Direct Sampling / Digital Down Conversion*  
+ADC | *Dual 14 bit Phase Synchronous ADCs @ 77.76MSPS. Hardware supports 4 independent receivers assignable to either ADC*  
+Frequency Coverage | *1MHz to 35MHz (1st Nyquist zone) and 45MHz to 65MHz (2nd Nyquist zone), reception below 1MHz is possible with some RX parameters degradation*  
+Input filtering | *LPF with 65MHz cutoff frequency*  
+Attenuator | *0..31dB 1dB step attenuator*  
 
-**Mechanical Specifications:**
+**Transmitter**| |
+-|-|
+Transmitter Architecture | *Digital Up Conversion*  
+DAC | *14 bit @ 155.52MSPS*  
+RF Output Power | *-3dBm*
 
-Weight: 100g (approx.)  
-Dimensions (two boards stacked): 100mm x 85mm x 35mm
-
-**Receiver Specifications:**
-
-Receiver Architecture: Direct Sampling / Digital Down Conversion  
-Dual 14 bit Phase Synchronous ADCs @ 77.76MSPS  
-Frequency Coverage: 1MHz to 35MHz (1st Nyquist zone) and 45MHz to 65MHz (2nd Nyquist zone)
-, reception below 1MHz is possible with some RX parameters degradation  
-Input filtering: LPF with 65MHz cutoff frequency  
-Attenuator: 0..31dB 1dB step attenuator  
-Hardware support for 4 independent receivers assignable to either ADC
-
-**Transmitter Specifications:**
-
-Transmitter Architecture: Digital Up Conversion  
-DAC: 14 bit @ 155.52MSPS  
-RF Output Power: -3dBm
-
-**IOs:**
-
-* RCA Line PTT in, PTT Out
-* 3.5mm Jack CW Key
-* 2.54mm pin headers for ALEX, OC (7 freely programmable open collector outputs), Analog Inputs (4channel + power supply monitoring), two digital inputs
-* SMA connector for 10MHz referenve input/output
-* SMA connector for 155.52MHz reference output
-* RJ45 Ethernet LAN Connector
+**IOs:**|
+-|
+RCA PTT in, PTT Out |
+3.5mm Jack CW Key |
+2.54mm pin headers for ALEX, OC (7 freely programmable open collector outputs), Analog |Inputs (4channel + power supply monitoring), two digital inputs
+SMA connector for 10MHz referenve input/output |
+SMA connector for 155.52MHz reference output |
+RJ45 Ethernet LAN Connector |
 
 # **Measurements**
 **MDS/FS level/BDR**
 ATT | MDS | FS level | BDR |
---- | --- | --- | --- |
+---: | ---: | ---: | ---: |
   0dB| -133dBm | -13dBm | 120dB |  
 -10dB| -127dBm | -2dBm | 125dB |
 -20dB| -117dBm | +9dBm | 126dB |
@@ -74,7 +72,7 @@ ATT | MDS | FS level | BDR |
 
 **RMDR**
 Offset | RMDR | SSB noise
---- | --- | ---
+---: | ---: | ---:
 1kHz | 111dB | 138dBc/Hz
 2kHz | 113dB | 140dBc/Hz
 5kHz | 117dB | 144dBc/Hz
