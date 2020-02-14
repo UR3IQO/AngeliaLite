@@ -650,11 +650,7 @@ wire DEBUG_LED9;
 wire DEBUG_LED10;
 
 
-assign NCONFIG = IP_write_done || reset_FPGA;
-
 wire speed = 1'b0; // high for 1000T
-// enable AF Amp
-assign  IO1 = 1'b0;  						// low to enable, high to mute
 
 localparam NR = 4; 							// number of receivers to implement
 localparam master_clock = 77760000; 	// DSP  master clock in Hz.
@@ -718,7 +714,6 @@ end
 wire C122_clk; 
 wire C122_clk_2;
 assign C122_clk = _77_76MHz;
-assign C122_clk_2 = _77_76MHz;
 
 //wire CLRCLK;
 //assign CLRCIN  = CLRCLK;
@@ -729,6 +724,8 @@ wire 	IF_locked;
 wire C122_cbrise;
 wire DACD_clock;
 wire M_CLK_PLL;
+wire CLRCLK;
+wire CMCLK;
 
 // Generate CMCLK (12.288MHz), CBCLK(3.072MHz), CLRCLK (48kHz) for CODEC 
 // NOTE: CBCLK is generated at 180 degress so that LRCLK occurs on negative edge of BCLK 
@@ -844,6 +841,8 @@ wire erase_ACK;
 wire EPCS_FIFO_enable;
 wire erase;	
 wire send_more;
+assign send_more = 1'b0;
+
 wire send_more_ACK;
 wire set_up;
 wire [31:0] assign_ip;
@@ -1136,7 +1135,7 @@ reg mic_data_ready;
 //    mic_data_ready <= (CLRCLK & ~CLRCLK1);
 // end
 
- mic_I2S mic_I2S_inst (.clock(CBCLK), .CLRCLK(CLRCLK), .in(CDOUT), .mic_data(mic_data), .ready(mic_data_ready));
+ mic_I2S mic_I2S_inst (.clock(CBCLK), .CLRCLK(CLRCLK), .in(/*CDOUT*/ 1'b0), .mic_data(mic_data), .ready(mic_data_ready));
 
 	 
 //------------------------------------------------
@@ -1172,6 +1171,7 @@ reg mic_data_ready;
 
 wire  sp_fifo_rdreq;
 wire [7:0]sp_fifo_rddata;
+assign sp_fif0_rddata = 8'b0;
 wire sp_fifo_wrempty;
 wire sp_fifo_wrfull;
 wire sp_fifo_wrreq;
@@ -1191,8 +1191,8 @@ wire sp_fifo_wrreq;
 
 wire have_sp_data;
 
-wire wideband = (Wideband_enable[0] | Wideband_enable[1]);  							// enable Wideband data if either selected
-wire [15:0] Wideband_source = Wideband_enable[0] ? temp_ADC[0] : temp_ADC[1];	// select Wideband data source ADC0 or ADC1
+wire wideband = 1'b0; //(Wideband_enable[0] | Wideband_enable[1]);  							// enable Wideband data if either selected
+//wire [15:0] Wideband_source = Wideband_enable[0] ? temp_ADC[0] : temp_ADC[1];	// select Wideband data source ADC0 or ADC1
 
 // SP_fifo  SPF (.aclr(!wideband), .wrclk (C122_clk), .rdclk(tx_clock), 
 //              .wrreq (sp_fifo_wrreq), .data ({Wideband_source[7:0], Wideband_source[15:8]}), .rdreq (sp_fifo_rdreq),
@@ -1205,9 +1205,11 @@ wire [15:0] Wideband_source = Wideband_enable[0] ? temp_ADC[0] : temp_ADC[1];	//
 
 
 // wire [:0] update_rate = 100T ?  12500 : 125000; // **** TODO: need to change counter target when run at 100T.
-wire [17:0] update_rate = 12500;
+//wire [17:0] update_rate = 12500;
 
-reg  sp_data_ready;
+//reg  sp_data_ready;
+wire  sp_data_ready;
+assign sp_data_ready = 1'b0;
 reg [24:0]wb_counter;
 wire WB_ack;
 
@@ -1274,6 +1276,7 @@ byte_to_32bits #(1028) Audio_byte_to_32bits_inst
 wire [31:0] Rx_audio;
 assign Rx_audio = CW_PTT && (sidetone_level != 0) ? {prof_sidetone, prof_sidetone}  : LR_data;
 
+wire CDIN;
 // send receiver audio to TLV320 in I2S format
 audio_I2S audio_I2S_inst (.run(run), .empty(Audio_empty), .BCLK(CBCLK), .rdusedw(Rx_Audio_Used), .LRCLK(CLRCLK), .data_in(Rx_audio), .data_out(CDIN), .get_data(get_audio_samples)); 
 
@@ -1372,8 +1375,9 @@ wire [10:0] EPCS_wrused;
 //----------------------------
 wire busy;				 // drives LED
 wire erase_done;
+assign erase_done = 1'b0;
 wire erase_done_ACK;
-wire reset_FPGA;
+//wire reset_FPGA;
 
 // ASMI_interface  ASMI_int_inst(.clock(clock_12_5MHz), .busy(busy), .erase(erase), .erase_ACK(erase_ACK), .IF_PHY_data(EPCS_data),
 // 							 .IF_Rx_used(EPCS_Rx_used), .rdreq(EPCS_rdreq), .erase_done(erase_done), .num_blocks(num_blocks),
@@ -2022,6 +2026,7 @@ wire [15:0] REV_power     = FPGA_PTT ? {4'b0,AIN2} : 16'b0;
 wire [15:0] user_analog1  = {4'b0, AIN3}; 
 wire [15:0] user_analog2  = {4'b0, AIN4}; 
 wire locked_10MHz;
+assign locked_10MHz = 1'b1;
  
 CC_encoder #(50, NR) CC_encoder_inst (				// 50mS update rate
 					//	inputs

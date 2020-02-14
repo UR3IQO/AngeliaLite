@@ -275,9 +275,6 @@ set_false_path -to [get_ports PD_*]
 #Internal reference enable
 set_false_path -to [get_ports REF_EN]
 
-#DEBUG outputs (temporarily assigned)
-set_false_path -to [get_ports S1*]
-
 #PHY MDC
 set_false_path -to [get_ports {PHY_MDC PHY_MDIO}]
 set_false_path -from [get_ports {PHY_MDIO}]
