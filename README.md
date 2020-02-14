@@ -60,7 +60,7 @@ RF Output Power | *-3dBm*
 RCA PTT in, PTT Out |
 3.5mm Jack CW Key |
 2.54mm pin headers for ALEX, 7 freely programmable open collector outputs, analog Inputs (4channel + power supply monitoring), two digital inputs |
-SMA connector for 10MHz referenve input/output |
+SMA connector for 10MHz reference input/output |
 SMA connector for 155.52MHz reference output |
 RJ45 Ethernet LAN Connector |
 
