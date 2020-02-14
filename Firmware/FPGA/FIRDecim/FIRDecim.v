@@ -79,6 +79,9 @@ begin
 
       if(!strobe_in2)
       begin
+         //After multiplication we have 36bits result with two sign bits
+         //We are adding results of two multiplications, the most significant bit 
+         //will be discarded and bit 35 should go to the GBITs.
          mult_r <= h * x1_r + h * x2_r;
          mult_i <= h * x1_i + h * x2_i;
       end
@@ -90,12 +93,11 @@ begin
       end
       else if(!strobe_in3)
       begin   
-         //After multiplication we have 36bits result with two sign bits
-         //Discard bit 35, round down to ABITS width and fill GBITS with sign
+         //Round down to ABITS width and fill GBITS with sign
          //The total accumulator size is GBITS + ABITS bits
          //GBITS are used to allow FIR gain > 1, so taps bits are used maximally effective 
-         acc_r <= acc_r + { { (GBITS){ mult_r[34] }}, mult_r[34:34-ABITS+1] };// + mult_r[34-ABITS];
-         acc_i <= acc_i + { { (GBITS){ mult_i[34] }}, mult_i[34:34-ABITS+1] };// + mult_i[34-ABITS];
+         acc_r <= acc_r + { { (GBITS){ mult_r[35] }}, mult_r[34:34-ABITS+1] };// + mult_r[34-ABITS];
+         acc_i <= acc_i + { { (GBITS){ mult_i[35] }}, mult_i[34:34-ABITS+1] };// + mult_i[34-ABITS];
       end   
    end
    else if(h_addr_calc == TAPS/2 + 3 /*pipeline delay*/)
@@ -109,7 +111,7 @@ begin
       if(in_cnt == 0)
       begin
          x_addr_calc1 <= addr_in;
-         x_addr_calc2 <= addr_in + (TAPS[ADDRBITS-1:0] - 1);
+         x_addr_calc2 <= addr_in + (TAPS[ADDRBITS-1:0] - 1'b1);
          h_addr_calc <= 0;
       end
    end
