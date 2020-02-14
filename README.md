@@ -67,7 +67,7 @@ RJ45 Ethernet LAN Connector |
 ## **Measurements**
 The receiver BW was 500Hz during the measurements.
 
-**MDS / NF / FS level / BDR**
+### **MDS / NF / FS level / BDR**
 
 ATT | MDS | NF | FS level | BDR |
 ---: | ---: | ---: | ---: | ---: |
@@ -76,7 +76,7 @@ ATT | MDS | NF | FS level | BDR |
 -20dB| -117dBm | 30dB | +9dBm | 126dB |
 -30dB| -107dBm | 40dB | - | - |
 
-**RMDR / SSB noise**
+### **RMDR / SSB noise**
 
 Offset | RMDR | SSB noise
 ---: | ---: | ---:
@@ -86,11 +86,41 @@ Offset | RMDR | SSB noise
 10kHz | 121dB | -148dBc/Hz
 20kHz | 124dB | -151dBc/Hz
 
-**IMD3 Performance**
+### **IMD3 Performance**
 
 The usual method of determining IMD3 receiver performance does not give useful data when testing direct sampling receiver (because of IMD products does not follow cubical law). So, the IMD3 performance data presented in graphical form showing IM3 levels depending of the test tones levels for the different attenuator settings.
 
 ![IMD3 Performance](AngeliaLiteIM3.png)
+
+## **DDC Decimation Filters**
+
+AngeliaLite uses different ADC/DAC sampling frequencies, so all decimation stages and filters were redesigned for the new decimation ratios.  
+
+### **SDR module input (analog LPF)**
+
+LPF filter at the SDR module input rejects ADC aliases. Only signals in the 1st and 2nd Nyquist zones passed. As you can see some additional filtering is required to separate signals in the first and second zones and improove rejection in the third and higher zones. Here is the LPF response:
+
+![Analog LPF Passband](ADC_LPF_57MHz.png)
+
+![Analog LPF Passband](ADC_LPF_WB.png)
+
+### **First stage 9x decimation (digital CIC filter)**
+
+When the signal is decimated aliasing occurs, so some filtering is needed. CIC filter provides such filtering for the first 9x decimation. The worst case alias rejection is **116dB**. Here is the filter response:
+
+![First stage CIC](Stage1_9x_CIC.png)
+
+### **Second stage 5x/10x/20x decimation (digital CIC flter)**
+
+The second decimation stage and one more CIC filter. The worst case alial rejection is **121dB** (for 5x decimation 96kHz bandwidth). Here is filter response:
+
+![Second stage CIC](Stage2_5x_CIC.png)
+
+### **Third stage 9x decimation (digital FIR filter)**
+
+The aliases of the last decimation by 9 are suppressed by the FIR filter. AngeliaLite uses relatively small and inexpensive FPGA, so last stage FIR filter is optimized for the minimum logic/memory FPGA resources use. The performance is limited by the 18bits FIR filter coefficients, but rejection is still at a respectable **100dB**. Here are the calculated ideal filter response (blue line) and the real one with quantized coefficients (red line):
+
+![Third stage FIR](Stage3_9x_FIR.png)
 
 ## **Board connections**
 **SDR module**
