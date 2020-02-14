@@ -125,7 +125,7 @@ integer i,j;
 
 reg [28:0] stuck_cnt = 29'd0;
 wire [7:0] number_Rx = NR;
-wire [31:0] clock_frequency = master_clock;
+//wire [31:0] clock_frequency = master_clock;
 
 
 always @(posedge tx_clock) 

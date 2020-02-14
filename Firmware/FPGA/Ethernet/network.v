@@ -96,6 +96,7 @@ module network (
   input MODE2
   );
 
+assign IP_write_done = 1'b0; //AngeliaLite does not support IP address setting using Ethernet
 wire [31:0] static_ip;
 wire eeprom_ready;
 //wire [1:0] phy_speed;
@@ -192,7 +193,7 @@ always @(negedge clock_2_5MHz)
     //wait for phy to initialize and connect
     ST_PHY_CONNECT:
       if (phy_connected) begin
-        dhcp_timer <= 22'd5000000; //2 second
+        dhcp_timer <= 22'd4_000_000; //a bit less than 2 seconds
         dhcp_success <= 1'b0;
         dhcp_rebind <= 1'b0;
         state <= ST_PHY_SETTLE;
@@ -237,10 +238,10 @@ always @(negedge clock_2_5MHz)
             dhcp_timer <= 22'd2_500_000;    // reset dhcp timers for next Renewal
             dhcp_seconds_timer <= 4'd0;
             reg_network_state <= 1'b0;    // Let network code know we have a valid IP address so can run when needed.
-            if (lease == 32'd0)
-               dhcp_renew_timer <= 43_200;  // use 43,200 seconds (12 hours) if no lease time set
+            if (lease == 32'd0 || lease[31:19] != 13'd0)
+               dhcp_renew_timer <= 43_200;  // use 43,200 seconds (12 hours) if no lease time set or lease time > 2^19 seconds
             else
-               dhcp_renew_timer <= lease >> 1;  // set timer to half lease time.
+               dhcp_renew_timer <= lease[18:1];  // set timer to half lease time.
             //    dhcp_renew_timer <= (32'd10 * 2_500_000);     // **** test code - set DHCP renew to 10 seconds ****
             state <= ST_DHCP_RENEW_WAIT;
          end
@@ -323,10 +324,10 @@ always @(negedge clock_2_5MHz)
          if (dhcp_success0) 
          begin
             dhcp_success <= 1'b1;
-            if (lease == 32'd0)
+            if (lease == 32'd0 || lease[31:19] != 13'd0)
                dhcp_renew_timer <= 43_200;  // use 43,200 seconds (12 hours) if no lease time set
             else
-               dhcp_renew_timer <= lease >> 1;  // set timer to half lease time.
+               dhcp_renew_timer <= lease[18:1];  // set timer to half lease time.
             //  dhcp_renew_timer <= (32'd10 * 2_500_000);     // **** test code - set DHCP renew to 10 seconds ****
             dhcp_timer <= 22'd2_500_000;    // reset dhcp timers for next Renewal
             state <= ST_DHCP_RENEW_WAIT;
@@ -770,7 +771,7 @@ rmii_send rmii_send_inst (
   .PHY_TX_EN(PHY_TX_EN),              
   
   .PHY_CLK50(PHY_CLK50),   
-  .clock(tx_clock), 
+  .clock(tx_clock) 
   );  
   
 
