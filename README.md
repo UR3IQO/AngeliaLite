@@ -92,7 +92,7 @@ The usual method of determining IMD3 receiver performance does not give useful d
 
 ![IMD3 Performance](AngeliaLiteIM3.png)
 
-## **DDC Decimation Filters**
+## **Image rejection and DDC Decimation Filters**
 
 AngeliaLite uses different ADC/DAC sampling frequencies, so all decimation stages and filters were redesigned for the new decimation ratios.  
 
