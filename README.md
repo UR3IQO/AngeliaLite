@@ -54,6 +54,7 @@ Attenuator | *0..31dB 1dB step attenuator*
 Transmitter Architecture | *Digital Up Conversion*  
 DAC | *14 bit @ 155.52MSPS*  
 RF Output Power | *-3dBm*
+Transmitter phase noise | -140dBc/Hz (at >1kHz offset and max. drive settings)
 
 **IOs:**|
 :-|
