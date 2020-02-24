@@ -153,8 +153,8 @@
 		Sep    2 - High_Priority_CC mod to latch Rx frequency after it changes.
 					- Rx2 not work.  Removed phase wire for Rx2.
 				   - Works, saved as today's date. 
-				 3 - High_Priority_CC output reg [31:0]Rx_frequency[0:NR-1] /* ramstyle = "logic" */  /* saved as today's date_1
-				   - sdr_send.v input [7:0]Rx_data[0:NR-1] /* ramstyle = "logic" */  /* saved as today's date_2
+				 3 - High_Priority_CC output reg [31:0]Rx_frequency[0:NR-1]  saved as today's date_1
+				   - sdr_send.v input [7:0]Rx_data[0:NR-1]  saved as today's date_2
 					- Works. Sent as release to Doug, Warren and Joe. 
 					- Saved as today's date.					
 				 4 - Testing Alex data - set NR = 2.
@@ -389,9 +389,9 @@
 					- Released for testing.
 			  6	- removed debounce_PTT as input from FPGA_PTT assignment		
 			  8 	- changed name of _122_90 clock to DACD_clock
-					- moved temp_DACD assignment out of the C122_clk always block
+					- moved temp_DACD assignment out of the C77_76_clk always block
 					- changed to use DACD_clock for temp_DACD assignment
-					- changed the ref clock for DACD[*] output_delay constraint in Angelia.sdc to _77_76MHz
+					- changed the ref clock for DACD[*] output_delay constraint in Angelia.sdc to C77_76_clk
 					- changed version number to v10.7
 					- changed PLL_IF/.c3 (DACD_clock) 122.88 MHz phase shift to 11.25 degrees
 					- removed all max/min delay constraints in Angelia.sdc, compiled
@@ -424,8 +424,8 @@
 							Tx1_IQ_fifo (increased used word size to [12:0]write_used)
 							icmp_fifo (usedw output not used)
 					- removed PLL_IF/.c3 output
-					- changed DACD ref clock to negedge _77_76MHz
-					- changed temp_DACD ref clock to C122_clk
+					- changed DACD ref clock to negedge C77_76_clk
+					- changed temp_DACD ref clock to C77_76_clk
 					- changed version number to v11.1
 					- removed all max/min delay constraints in Angelis.sdc file, compiled
 					- retimed/recompiled iteratively until timing was closed
@@ -494,7 +494,12 @@
 			      - set DEBUG_LED10 to indicate amplitude difference between DDC0 and DDC1 when in Mux mode.	
 
 2018 April  - changed to use in AngeliaLite by Oleg Skydan UR3IQO
-				 
+
+2020 Feb 24 - TX inhibit (IO4) is now functional through the IO1 pin on the AngeliaLite MB
+            - Unused ADC is power down now
+            - Dither settings could be overrided using AngeliaLite MB (currently IO2 jumper permanently turns dithering on)
+				- code cleanup and minor optimizations
+            Should be used with 1.00.185 MCU firmware 
 */
 
 module Angelia(
@@ -632,10 +637,6 @@ wire IO5;
 
 assign IO5 = 1'b1;
 
-
-assign SHDN = 1'b0;				   		// normal LTC2208 operation
-assign SHDN_2 = 1'b0;
-
 //debug led's
 wire Status_LED;      
 wire DEBUG_LED1;             
@@ -662,27 +663,27 @@ localparam board_type = 8'h04;		  	// 0x00 = Metis, 0x01 = Hermes, 0x02 = Griffi
 parameter  Angelia_version = 8'd117;	// FPGA code version
 parameter  protocol_version = 8'd37;	// openHPSDR protocol version implemented
 
-wire _77_76MHz;
+wire C77_76_clk;
 
 //--------------------------------------------------------------
-// Reset Lines - C122_rst, IF_rst, SPI_Alex_reset
+// Reset Lines - C77_76_rst, IF_rst, SPI_Alex_reset
 //--------------------------------------------------------------
 
 wire  IF_rst;
 wire SPI_Alex_rst;
-wire C122_rst;
+wire C77_76_rst;
 wire C155_rst;
 wire SPI_clk;
 	
 assign IF_rst = network_state;  // hold code in reset until Ethernet code is running.
 
 
-// transfer IF_rst to 122.88MHz clock domain to generate C122_rst
+// transfer IF_rst to 122.88MHz clock domain to generate C77_76_rst
 cdc_sync #(1)
-	reset_C122 (.siga(IF_rst), .rstb(0), .clkb(_77_76MHz), .sigb(C122_rst)); // 122.88MHz clock domain reset
+	reset_C122 (.siga(IF_rst), .rstb(0), .clkb(C77_76_clk), .sigb(C77_76_rst)); // 122.88MHz clock domain reset
 
 cdc_sync #(1)
-	reset_C155 (.siga(IF_rst), .rstb(0), .clkb(_155_52MHz), .sigb(C155_rst)); // 122.88MHz clock domain reset
+	reset_C155 (.siga(IF_rst), .rstb(0), .clkb(C155_52_clk), .sigb(C155_rst)); // 122.88MHz clock domain reset
 
 cdc_sync #(1)
 	reset_Alex (.siga(IF_rst), .rstb(0), .clkb(SPI_clk), .sigb(SPI_Alex_rst));  // SPI_clk domain reset
@@ -711,39 +712,33 @@ end
 //		CLOCKS
 //---------------------------------------------------------
 
-wire C122_clk; 
-wire C122_clk_2;
-assign C122_clk = _77_76MHz;
-
 //wire CLRCLK;
 //assign CLRCIN  = CLRCLK;
 //assign CLRCOUT = CLRCLK;
 
 
 wire 	IF_locked;
-wire C122_cbrise;
+//wire C77_76_cbrise;
 wire DACD_clock;
-wire M_CLK_PLL;
+wire C155_52_clk;
 wire CLRCLK;
 wire CMCLK;
+wire CBCLK;
 
 // Generate CMCLK (12.288MHz), CBCLK(3.072MHz), CLRCLK (48kHz) for CODEC 
 // NOTE: CBCLK is generated at 180 degress so that LRCLK occurs on negative edge of BCLK 
 PLL_C PLL_C_inst (.inclk0(M_CLK), .c0(CMCLK), .c1(CBCLK), .c2(CLRCLK), .locked());
 
-pulsegen pulse  (.sig(CBCLK), .rst(IF_rst), .clk(!CMCLK), .pulse(C122_cbrise));  // pulse on rising edge of BCLK for Rx/Tx frequency calculations
+//Generate C77_76_clk clock from the ADC clock
+//PLL_IF PLL_IF_inst (.inclk0(ADC1_CLK), .c3(C77_76_clk), .locked(IF_locked));
 
+// Generate 155.52MHz clock for transmitter (C155_52_clk), 1. for DC-DC syncronization (SYNC)
 
-//Generate _77_76MHz clock from the ADC clock
-PLL_IF PLL_IF_inst (.inclk0(ADC1_CLK), .c3(_77_76MHz), .locked(IF_locked));
-
-// Generate 155.52MHz clock for transmitter (M_CLK_PLL), 1. for DC-DC syncronization (SYNC)
-// and clock enable for SPI LNA/ADC control interface
-wire M_SPI_EN;
-
-PLL PLL_main (.inclk0(M_CLK),	.c0(M_CLK_PLL), /*.c1(M_SPI_EN), .c2(SYNC),*/ .c3(DACD_clock), .locked());
+PLL PLL_main (.inclk0(M_CLK),	.c0(C155_52_clk), .c1(C77_76_clk), /*.c2(SYNC),*/ .c3(DACD_clock), .locked(IF_locked));
 
 assign SYNC = 1'b0;
+
+//pulsegen pulse  (.sig(CBCLK), .rst(IF_rst), .clk(!CMCLK), .pulse(C77_76_cbrise));  // pulse on rising edge of BCLK for Rx/Tx frequency calculations
 //-----------------------------------------------------------------------------
 //                           network module
 //-----------------------------------------------------------------------------
@@ -992,7 +987,7 @@ endgenerate
 						   |				        |
 	  Rx(n)_fifo_wreq	|wreq		           | 
 						   |					     |
-		     C122_clk	|>wrclk	wrused[9:0]| 
+		     C77_76_clk	|>wrclk	wrused[9:0]| 
 						   +-------------------+
      fifo_rdreq[n]	|rdreq		  q[7:0]| Rx_data[n]
 						   |					     |
@@ -1020,18 +1015,18 @@ wire 			fifo_clear1;
 wire 			write_enable;
 wire 			phy_ready;
 wire 			convert_state;
-wire 			C122_run;
+wire 			C77_76_run;
 
 // This is just for Rx0 since it can sync with Rx1.
 
-		Rx_fifo Rx0_fifo_inst(.wrclk (C122_clk),.rdreq (fifo_rdreq[0]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[0] && write_enable), 
+		Rx_fifo Rx0_fifo_inst(.wrclk (C77_76_clk),.rdreq (fifo_rdreq[0]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[0] && write_enable), 
 							 .data (Rx_fifo_data[0]), .q (Rx_data[0]), .wrfull(Rx_fifo_full[0]), .rdempty(Rx_fifo_empty),
 							 .rdusedw(Rx_used[0]), .aclr (IF_rst | Rx_fifo_clr[0] | !run | fifo_clear ));  											
 							  
-		Rx_fifo_ctrl0 #(NR) Rx0_fifo_ctrl_inst( .reset(!C122_run || !C122_EnableRx0_7[0] ), .clock(C122_clk), .data_in_I(rx_I[1]), .data_in_Q(rx_Q[1]), // was rx_Q[1]
-													.spd_rdy(strobe[0]), .spd_rdy2(strobe[1]), .fifo_full(Rx_fifo_full[0]), .Rx_fifo_empty(C122_Rx_fifo_empty),  //.Rx_number(d),
+		Rx_fifo_ctrl0 #(NR) Rx0_fifo_ctrl_inst( .reset(!C77_76_run || !C77_76_EnableRx0_7[0] ), .clock(C77_76_clk), .data_in_I(rx_I[1]), .data_in_Q(rx_Q[1]), // was rx_Q[1]
+													.spd_rdy(strobe[0]), .spd_rdy2(strobe[1]), .fifo_full(Rx_fifo_full[0]), .Rx_fifo_empty(C77_76_Rx_fifo_empty),  //.Rx_number(d),
 													.wrenable(Rx_fifo_wreq[0]), .data_out(Rx_fifo_data[0]), .fifo_clear(Rx_fifo_clr[0]),
-													.Sync_data_in_I(rx_I[0]), .Sync_data_in_Q(rx_Q[0]), .Sync(C122_SyncRx[0]), .convert_state(convert_state));	
+													.Sync_data_in_I(rx_I[0]), .Sync_data_in_Q(rx_Q[0]), .Sync(C77_76_SyncRx[0]), .convert_state(convert_state));	
 													
 		assign  fifo_ready[0] = (Rx_used[0] > 12'd1427) ? 1'b1 : 1'b0;  // used to signal that fifo has enough data to send to PC
 		
@@ -1040,22 +1035,22 @@ wire 			C122_run;
 
 
 // move flags into correct clock domains
-wire C122_phy_ready;
-wire C122_Rx_fifo_empty;
-cdc_sync #(1) cdc_phyready  (.siga(phy_ready), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_phy_ready));
-cdc_sync #(1) cdc_Rx_fifo_empty  (.siga(Rx_fifo_empty), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_Rx_fifo_empty));
+wire C77_76_phy_ready;
+wire C77_76_Rx_fifo_empty;
+cdc_sync #(1) cdc_phyready  (.siga(phy_ready), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_phy_ready));
+cdc_sync #(1) cdc_Rx_fifo_empty  (.siga(Rx_fifo_empty), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_Rx_fifo_empty));
 
-cdc_sync #(1) C122_run_sync  (.siga(run), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_run));
-cdc_sync #(16) C122_EnableRx0_7_sync  (.siga(EnableRx0_7), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_EnableRx0_7));
+cdc_sync #(1) C77_76_run_sync  (.siga(run), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_run));
+cdc_sync #(16) C77_76_EnableRx0_7_sync  (.siga(EnableRx0_7), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_EnableRx0_7));
 
-Mux_clear Mux_clear_inst( .clock(C122_clk), .Mux(C122_SyncRx[0][1]), .phy_ready(C122_phy_ready), .convert_state(convert_state), .SampleRate(C122_SampleRate[0]),
-								  .fifo_clear(fifo_clear), .fifo_clear1(fifo_clear1), .fifo_write_enable(write_enable), .fifo_empty(C122_Rx_fifo_empty), .reset(!C122_run));	
+Mux_clear Mux_clear_inst( .clock(C77_76_clk), .Mux(C77_76_SyncRx[0][1]), .phy_ready(C77_76_phy_ready), .convert_state(convert_state), .SampleRate(C77_76_SampleRate[0]),
+								  .fifo_clear(fifo_clear), .fifo_clear1(fifo_clear1), .fifo_write_enable(write_enable), .fifo_empty(C77_76_Rx_fifo_empty), .reset(!C77_76_run));	
 								  
-		Rx_fifo Rx1_fifo_inst(.wrclk (C122_clk),.rdreq (fifo_rdreq[1]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[1]), 
+		Rx_fifo Rx1_fifo_inst(.wrclk (C77_76_clk),.rdreq (fifo_rdreq[1]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[1]), 
 							 .data (Rx_fifo_data[1]), .q (Rx_data[1]), .wrfull(Rx_fifo_full[1]),
-							 .rdusedw(Rx_used[1]), .aclr (IF_rst | Rx_fifo_clr[1] | !C122_run | fifo_clear1));   // ***** added fifo_clear1
+							 .rdusedw(Rx_used[1]), .aclr (IF_rst | Rx_fifo_clr[1] | !C77_76_run | fifo_clear1));   // ***** added fifo_clear1
 
-		Rx_fifo_ctrl #(NR) Rx1_fifo_ctrl_inst( .reset(!C122_run || !C122_EnableRx0_7[1]), .clock(C122_clk),   
+		Rx_fifo_ctrl #(NR) Rx1_fifo_ctrl_inst( .reset(!C77_76_run || !C77_76_EnableRx0_7[1]), .clock(C77_76_clk),   
 							.spd_rdy(strobe[1]), .fifo_full(Rx_fifo_full[1]), //.Rx_number(d),
 							.wrenable(Rx_fifo_wreq[1]), .data_out(Rx_fifo_data[1]), .fifo_clear(Rx_fifo_clr[1]),
 							.Sync_data_in_I(rx_I[1]), .Sync_data_in_Q(rx_Q[1]), .Sync(0));
@@ -1068,15 +1063,15 @@ genvar d;
 for (d = 2 ; d < NR; d++)
 	begin:p
 
-		Rx_fifo Rx_fifo_inst(.wrclk (C122_clk),.rdreq (fifo_rdreq[d]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[d]), 
+		Rx_fifo Rx_fifo_inst(.wrclk (C77_76_clk),.rdreq (fifo_rdreq[d]),.rdclk (tx_clock),.wrreq (Rx_fifo_wreq[d]), 
 							 .data (Rx_fifo_data[d]), .q (Rx_data[d]), .wrfull(Rx_fifo_full[d]),
-							 .rdusedw(Rx_used[d]), .aclr (IF_rst | Rx_fifo_clr[d] | !C122_run));
+							 .rdusedw(Rx_used[d]), .aclr (IF_rst | Rx_fifo_clr[d] | !C77_76_run));
 
 		// Convert 48 bit Rx I&Q data (24bit I, 24 bit Q) into 8 bits to feed Tx FIFO. Only run if EnableRx0_7[x] is set.
 		// If Sync[n] enabled then select the data from the receiver to be synchronised.
-		// Do this by using C122_SyncRx(n) to select the required receiver I & Q data.
+		// Do this by using C77_76_SyncRx(n) to select the required receiver I & Q data.
 
-		Rx_fifo_ctrl #(NR) Rx0_fifo_ctrl_inst( .reset(!C122_run || !C122_EnableRx0_7[d]), .clock(C122_clk),   
+		Rx_fifo_ctrl #(NR) Rx0_fifo_ctrl_inst( .reset(!C77_76_run || !C77_76_EnableRx0_7[d]), .clock(C77_76_clk),   
 							.spd_rdy(strobe[d]), .fifo_full(Rx_fifo_full[d]), //.Rx_number(d),
 							.wrenable(Rx_fifo_wreq[d]), .data_out(Rx_fifo_data[d]), .fifo_clear(Rx_fifo_clr[d]),
 							.Sync_data_in_I(rx_I[d]), .Sync_data_in_Q(rx_Q[d]), .Sync(0));
@@ -1154,7 +1149,7 @@ reg mic_data_ready;
 						|				         |
 	sp_fifo_wrreq	|wrreq	     wrempty| sp_fifo_wrempty
 						|				         |
-			C122_clk	|>wrclk              | 
+			C77_76_clk	|>wrclk              | 
 						+--------------------+
 	sp_fifo_rdreq	|rdreq		   q[7:0]| sp_fifo_rddata
 						|                    | 
@@ -1171,7 +1166,7 @@ reg mic_data_ready;
 
 wire  sp_fifo_rdreq;
 wire [7:0]sp_fifo_rddata;
-assign sp_fif0_rddata = 8'b0;
+assign sp_fifo_rddata = 8'b0;
 wire sp_fifo_wrempty;
 wire sp_fifo_wrfull;
 wire sp_fifo_wrreq;
@@ -1194,11 +1189,11 @@ wire have_sp_data;
 wire wideband = 1'b0; //(Wideband_enable[0] | Wideband_enable[1]);  							// enable Wideband data if either selected
 //wire [15:0] Wideband_source = Wideband_enable[0] ? temp_ADC[0] : temp_ADC[1];	// select Wideband data source ADC0 or ADC1
 
-// SP_fifo  SPF (.aclr(!wideband), .wrclk (C122_clk), .rdclk(tx_clock), 
+// SP_fifo  SPF (.aclr(!wideband), .wrclk (C77_76_clk), .rdclk(tx_clock), 
 //              .wrreq (sp_fifo_wrreq), .data ({Wideband_source[7:0], Wideband_source[15:8]}), .rdreq (sp_fifo_rdreq),
 //              .q(sp_fifo_rddata), .wrfull(sp_fifo_wrfull), .wrempty(sp_fifo_wrempty)); 	
 				 
-// sp_rcv_ctrl SPC (.clk(C122_clk), .reset(0), .sp_fifo_wrempty(sp_fifo_wrempty),
+// sp_rcv_ctrl SPC (.clk(C77_76_clk), .reset(0), .sp_fifo_wrempty(sp_fifo_wrempty),
 //                  .sp_fifo_wrfull(sp_fifo_wrfull), .write(sp_fifo_wrreq), .have_sp_data(have_sp_data));	
 				 
 // **** TODO: change number of samples in FIFO (presently 16k) based on user selection **** 
@@ -1295,11 +1290,11 @@ audio_I2S audio_I2S_inst (.run(run), .empty(Audio_empty), .BCLK(CBCLK), .rdusedw
 								|					      |									    
 				 rx_clock	|>wrclk	 		      |
 								+--------------------+								
-	               req1  |rdreq		  q[47:0]| C122_IQ1_data
+	               req1  |rdreq		  q[47:0]| C77_76_IQ1_data
 								|					      |					  			
 								|   		            | 
 								|                    | 							
-				_155_52MHz	|>rdclk              | 	    
+				C155_52_clk	|>rdclk              | 	    
 								+--------------------+								
 								|                    |
 		  !run | IF_rst   |aclr                |								
@@ -1307,15 +1302,12 @@ audio_I2S audio_I2S_inst (.run(run), .empty(Audio_empty), .BCLK(CBCLK), .rdusedw
 								
 */
 
-wire _155_52MHz;
-assign _155_52MHz = M_CLK_PLL;
-
 wire Tx1_fifo_wrreq;
 wire [35:0]C155_IQ1_data;
 wire [47:0]Tx1_IQ_data;
 wire [12:0]write_used;
 
-Tx1_IQ_fifo Tx1_IQ_fifo_inst(.wrclk (rx_clock),.rdreq (req1),.rdclk (_155_52MHz),.wrreq(Tx1_fifo_wrreq), 
+Tx1_IQ_fifo Tx1_IQ_fifo_inst(.wrclk (rx_clock),.rdreq (req1),.rdclk (C155_52_clk),.wrreq(Tx1_fifo_wrreq), 
  					 .data ({ Tx1_IQ_data[47:30], Tx1_IQ_data[23:6] }), .q(C155_IQ1_data), .aclr(!run | IF_rst), .wrusedw(write_used));
 					 
 // Manage Tx I&Q data to feed to Tx  - parameter is port #
@@ -1430,18 +1422,38 @@ sidetone sidetone_inst( .clock(CLRCLK), .enable(sidetone), .tone_freq(tone_freq)
 reg [13:0] temp_ADC[0:1];
 reg [13:0] temp_DACD;
 
-always @ (posedge _155_52MHz)
-   if(!_77_76MHz)temp_DACD <= Tx1_DAC_data;
+always @ (posedge C155_52_clk)
+   if(C77_76_clk)temp_DACD <= Tx1_DAC_data;
 
-always @ (posedge C122_clk) 
+
+
+// reg[31:0] lfsr;
+
+// always @ (posedge C77_76_clk) 
+// begin 
+//    lfsr <= { ~(lfsr[31] ^ lfsr[30] ^ lfsr[1] ^ lfsr[0]), lfsr[31:1] };
+// end
+
+// reg [13:0] temp1_ADC;
+// reg [1:0] gstate;
+
+// always @ (posedge C77_76_clk) 
+// begin 
+//    gstate <= gstate + 1'b1;
+//    case (gstate)
+//       0: temp_ADC[0] <= temp1_ADC;  // not set so just copy data	 	
+//       1: temp_ADC[0] <= temp1_ADC + 14'h0002;  // not set so just copy data	 	
+//       2: temp_ADC[0] <= temp1_ADC;  // not set so just copy data	 	
+//       3: temp_ADC[0] <= temp1_ADC + 14'h3FFE;  // not set so just copy data	 	
+//    endcase
+// 	temp1_ADC <= lfsr[0] ? 14'h0001 : 14'h3FFF;
+// 	temp_ADC[1] <= lfsr[0] ? 14'h0001 : 14'h3FFF;//ADC2;
+// end
+
+always @ (posedge C77_76_clk) 
 begin 
-
-	 //{DAC,x} <= {x, Tx1_DAC_data[21:8], 2'b0}; // make DACD 16-bits, use high bits for DACD
-	//temp_DACD <= {DACD, 2'b00};
-	
    temp_ADC[0] <= ADC1;  // not set so just copy data	 	
 	temp_ADC[1] <= ADC2;
-	
 end 
 
 
@@ -1451,20 +1463,20 @@ end
 //------------------------------------------------------------------------------
 
 wire       [31:0] C155_frequency_HZ [0:NR-1];   // frequency control bits for CORDIC
-reg       [31:0] C122_frequency_HZ_Tx;
-reg       [31:0] C122_last_freq [0:NR-1];
-reg       [31:0] C122_last_freq_Tx;
-reg       [31:0] C122_sync_phase_word [0:NR-1];
-reg       [31:0] C122_sync_phase_word_Tx;
-wire      [63:0] C122_ratio [0:NR-1];
-wire      [63:0] C122_ratio_Tx;
+reg       [31:0] C77_76_frequency_HZ_Tx;
+reg       [31:0] C77_76_last_freq [0:NR-1];
+reg       [31:0] C77_76_last_freq_Tx;
+reg       [31:0] C77_76_sync_phase_word [0:NR-1];
+reg       [31:0] C77_76_sync_phase_word_Tx;
+wire      [63:0] C77_76_ratio [0:NR-1];
+wire      [63:0] C77_76_ratio_Tx;
 wire      [23:0] rx_I [0:NR-1];
 wire      [23:0] rx_Q [0:NR-1];
 wire             strobe [0:NR-1];
-wire      [15:0] C122_SampleRate[0:NR-1]; 
-wire       [7:0] C122_RxADC[0:NR-1];
-wire       [7:0] C122_SyncRx[0:NR-1];
-wire      [31:0] C122_phase_word[0:NR-1]; 
+wire      [15:0] C77_76_SampleRate[0:NR-1]; 
+wire       [1:0] C77_76_RxADC[0:NR-1];
+wire       [7:0] C77_76_SyncRx[0:NR-1];
+wire      [31:0] C77_76_phase_word[0:NR-1]; 
 wire [13:0] select_input_RX[0:NR-1];		// set receiver module input sources
 //wire 		[15:0] select_input_RX1;		// set receiver module input source for RX1
 
@@ -1476,55 +1488,66 @@ generate
    begin: MDC 
 	
 	// Move RxADC[n] to C122 clock domain
-	cdc_mcp #(16) ADC_select
-	(.a_rst(C122_rst), .a_clk(rx_clock), .a_data(RxADC[c]), .a_data_rdy(Rx_data_ready), .b_rst(C122_rst), .b_clk(C122_clk), .b_data(C122_RxADC[c]));
+	cdc_mcp #(2) ADC_select
+	(.a_rst(C77_76_rst), .a_clk(rx_clock), .a_data(RxADC[c]), .a_data_rdy(Rx_data_ready), .b_rst(C77_76_rst), .b_clk(C77_76_clk), .b_data(C77_76_RxADC[c]));
 
 
 	// Move Rx[n] sample rate to C122 clock domain
 	cdc_mcp #(16) S_rate
-	(.a_rst(C122_rst), .a_clk(rx_clock), .a_data(RxSampleRate[c]), .a_data_rdy(Rx_data_ready), .b_rst(C122_rst), .b_clk(C122_clk), .b_data(C122_SampleRate[c]));
+	(.a_rst(C77_76_rst), .a_clk(rx_clock), .a_data(RxSampleRate[c]), .a_data_rdy(Rx_data_ready), .b_rst(C77_76_rst), .b_clk(C77_76_clk), .b_data(C77_76_SampleRate[c]));
 	
   end
 endgenerate
 
-always @ (posedge C122_clk) begin
-    select_input_RX[0] <= C122_RxADC[0] == 8'd1 ? temp_ADC[1] : temp_ADC[0];
-    select_input_RX[1] <= C122_RxADC[1] == 8'd2 ? temp_DACD : (C122_RxADC[1] == 8'd1 ? temp_ADC[1] : temp_ADC[0]); 
-    select_input_RX[2] <= C122_RxADC[2] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
-    select_input_RX[3] <= C122_RxADC[3] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
-//    select_input_RX[4] <= C122_RxADC[4] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
-//    select_input_RX[5] <= C122_RxADC[5] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
-//    select_input_RX[6] <= C122_RxADC[6] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
+always @ (posedge C77_76_clk) begin
+    select_input_RX[0] <= C77_76_RxADC[0] == 2'd1 ? temp_ADC[1] : temp_ADC[0];
+    select_input_RX[1] <= C77_76_RxADC[1] == 2'd2 ? temp_DACD : (C77_76_RxADC[1] == 8'd1 ? temp_ADC[1] : temp_ADC[0]); 
+    select_input_RX[2] <= C77_76_RxADC[2] == 2'd1 ? temp_ADC[1] : temp_ADC[0]; 
+    select_input_RX[3] <= C77_76_RxADC[3] == 2'd1 ? temp_ADC[1] : temp_ADC[0]; 
+    
+    power_ADC1 <= C77_76_EnableRx0_7[0] & (C77_76_RxADC[0] == 2'd0)
+                | C77_76_EnableRx0_7[1] & (C77_76_RxADC[1] == 2'd0)
+                | C77_76_EnableRx0_7[2] & (C77_76_RxADC[2] == 2'd0)
+                | C77_76_EnableRx0_7[3] & (C77_76_RxADC[3] == 2'd0);
+
+    power_ADC2 <= C77_76_EnableRx0_7[0] & (C77_76_RxADC[0] == 2'd1)
+                | C77_76_EnableRx0_7[1] & (C77_76_RxADC[1] == 2'd1)
+                | C77_76_EnableRx0_7[2] & (C77_76_RxADC[2] == 2'd1)
+                | C77_76_EnableRx0_7[3] & (C77_76_RxADC[3] == 2'd1);
+
+//    select_input_RX[4] <= C77_76_RxADC[4] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
+//    select_input_RX[5] <= C77_76_RxADC[5] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
+//    select_input_RX[6] <= C77_76_RxADC[6] == 8'd1 ? temp_ADC[1] : temp_ADC[0]; 
 end
 
 // move Rx phase words to C122 clock domain
 cdc_sync #(32) Rx_freq0 
-(.siga(Rx_frequency[0]), .rstb(C155_rst), .clkb(M_CLK_PLL), .sigb(C155_frequency_HZ[0]));
+(.siga(Rx_frequency[0]), .rstb(C155_rst), .clkb(C155_52_clk), .sigb(C155_frequency_HZ[0]));
 
 cdc_sync #(32) Rx_freq1 
-(.siga(Rx_frequency[1]), .rstb(C155_rst), .clkb(M_CLK_PLL), .sigb(C155_frequency_HZ[1]));	
+(.siga(Rx_frequency[1]), .rstb(C155_rst), .clkb(C155_52_clk), .sigb(C155_frequency_HZ[1]));	
 
  cdc_sync #(32) Rx_freq2 
- (.siga(Rx_frequency[2]), .rstb(C155_rst), .clkb(M_CLK_PLL), .sigb(C155_frequency_HZ[2]));	
+ (.siga(Rx_frequency[2]), .rstb(C155_rst), .clkb(C155_52_clk), .sigb(C155_frequency_HZ[2]));	
 
  cdc_sync #(32) Rx_freq3 
- (.siga(Rx_frequency[3]), .rstb(C155_rst), .clkb(M_CLK_PLL), .sigb(C155_frequency_HZ[3]));	
+ (.siga(Rx_frequency[3]), .rstb(C155_rst), .clkb(C155_52_clk), .sigb(C155_frequency_HZ[3]));	
 
 //cdc_sync #(32) Rx_freq4 
-//(.siga(Rx_frequency[4]), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_frequency_HZ[4]));	
+//(.siga(Rx_frequency[4]), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_frequency_HZ[4]));	
 
 //cdc_sync #(32) Rx_freq5 
-//(.siga(Rx_frequency[5]), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_frequency_HZ[5]));	
+//(.siga(Rx_frequency[5]), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_frequency_HZ[5]));	
 
 //cdc_sync #(32) Rx_freq6 
-//(.siga(Rx_frequency[6]), .rstb(C122_rst), .clkb(C122_clk), .sigb(C122_frequency_HZ[6]));	
+//(.siga(Rx_frequency[6]), .rstb(C77_76_rst), .clkb(C77_76_clk), .sigb(C77_76_frequency_HZ[6]));	
 
 wire [17:0] mix_data_I[0:NR-1];
 wire [17:0] mix_data_Q[0:NR-1];
 
     mix2 #(.CALCTYPE(4)) mix2_inst0 (
-      .clk(C122_clk),
-      .clk_2x(M_CLK_PLL),
+      .clk(C77_76_clk),
+      .clk_2x(C155_52_clk),
       .rst(1'b0),
       .phi0(C155_frequency_HZ[0]),
       .phi1(C155_frequency_HZ[1]),
@@ -1539,10 +1562,10 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst0(   
 	//control
-	.reset(fifo_clear || !C122_run || !C122_EnableRx0_7[0]),
-	.clock(C122_clk),
+	.reset(fifo_clear || !C77_76_run || !C77_76_EnableRx0_7[0]),
+	.clock(C77_76_clk),
 	//input
-	.sample_rate(C122_SampleRate[0]),
+	.sample_rate(C77_76_SampleRate[0]),
 	.in_data_I(mix_data_I[0]),
    .in_data_Q(mix_data_Q[0]),
 	//output
@@ -1554,10 +1577,10 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst1(   
 	//control
-	.reset(fifo_clear || !C122_run || !C122_EnableRx0_7[0]),
-	.clock(C122_clk),
+	.reset(fifo_clear || !C77_76_run || !C77_76_EnableRx0_7[0]),
+	.clock(C77_76_clk),
 	//input
-	.sample_rate( C122_SampleRate[1]),
+	.sample_rate( C77_76_SampleRate[1]),
 	.in_data_I(mix_data_I[1]),
    .in_data_Q(mix_data_Q[1]),
 	//output
@@ -1568,8 +1591,8 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 
     mix2 #(.CALCTYPE(4)) mix2_inst1 (
-      .clk(C122_clk),
-      .clk_2x(M_CLK_PLL),
+      .clk(C77_76_clk),
+      .clk_2x(C155_52_clk),
       .rst(1'b0),
       .phi0(C155_frequency_HZ[2]),
       .phi1(C155_frequency_HZ[3]),
@@ -1584,9 +1607,9 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst2(   
 	//control
-	.reset(!C122_run),
-	.clock(C122_clk),
-	.sample_rate(C122_SampleRate[2]),
+	.reset(!C77_76_run),
+	.clock(C77_76_clk),
+	.sample_rate(C77_76_SampleRate[2]),
 	.out_strobe(strobe[2]),
 	//input
 	.in_data_I(mix_data_I[2]),
@@ -1599,9 +1622,9 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst3(   
 	//control
-	.reset(!C122_run),  
-	.clock(C122_clk),
-	.sample_rate(C122_SampleRate[3]),
+	.reset(!C77_76_run),  
+	.clock(C77_76_clk),
+	.sample_rate(C77_76_SampleRate[3]),
 	.out_strobe(strobe[3]),
 	//input
 	.in_data_I(mix_data_I[3]),
@@ -1616,10 +1639,10 @@ wire [17:0] mix_data_Q[0:NR-1];
 /*	
 	receiver receiver_inst4(   
 	//control
-	.reset(!C122_run),
-	.clock(C122_clk),
-	.sample_rate(C122_SampleRate[4]),
-	.frequency(C122_frequency_HZ[4]),     // PC send phase word now
+	.reset(!C77_76_run),
+	.clock(C77_76_clk),
+	.sample_rate(C77_76_SampleRate[4]),
+	.frequency(C77_76_frequency_HZ[4]),     // PC send phase word now
 	.out_strobe(strobe[4]),
 	//input
 	.in_data(select_input_RX[4]),
@@ -1632,10 +1655,10 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst5(   
 	//control
-	.reset(!C122_run),
-	.clock(C122_clk),
-	.sample_rate(C122_SampleRate[5]),
-	.frequency(C122_frequency_HZ[5]),     // PC send phase word now
+	.reset(!C77_76_run),
+	.clock(C77_76_clk),
+	.sample_rate(C77_76_SampleRate[5]),
+	.frequency(C77_76_frequency_HZ[5]),     // PC send phase word now
 	.out_strobe(strobe[5]),
 	//input
 	.in_data(select_input_RX[5]),
@@ -1648,10 +1671,10 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst6(   
 	//control
-	.reset(!C122_run),
-	.clock(C122_clk),
-	.sample_rate(C122_SampleRate[6]),
-	.frequency(C122_frequency_HZ[6]),     // PC send phase word now
+	.reset(!C77_76_run),
+	.clock(C77_76_clk),
+	.sample_rate(C77_76_SampleRate[6]),
+	.frequency(C77_76_frequency_HZ[6]),     // PC send phase word now
 	.out_strobe(strobe[6]),
 	//input
 	.in_data(select_input_RX[6]),
@@ -1664,7 +1687,7 @@ wire [17:0] mix_data_Q[0:NR-1];
 // only using Rx0 and Rx1 Sync for now so can use simpler code
 	// Move SyncRx[n] into C122 clock domain
 	cdc_mcp #(8) SyncRx_inst
-	(.a_rst(C122_rst), .a_clk(rx_clock), .a_data(SyncRx[0]), .a_data_rdy(Rx_data_ready), .b_rst(C122_rst), .b_clk(C122_clk), .b_data(C122_SyncRx[0]));
+	(.a_rst(C77_76_rst), .a_clk(rx_clock), .a_data(SyncRx[0]), .a_data_rdy(Rx_data_ready), .b_rst(C77_76_rst), .b_clk(C77_76_clk), .b_data(C77_76_SyncRx[0]));
 		
 				   
 //---------------------------------------------------------
@@ -1682,21 +1705,21 @@ wire req1;
 wire [18:0] y2_r, y2_i;
 wire [18:0] y2_r1, y2_i1;
 
-// CicInterpM5 #(.RRRR(810), .IBITS(24), .OBITS(18), .GBITS(39)) in2 (_155_52MHz, 1'd1, req1, IQ_Tx_data[47:24],
+// CicInterpM5 #(.RRRR(810), .IBITS(24), .OBITS(18), .GBITS(39)) in2 (C155_52_clk, 1'd1, req1, IQ_Tx_data[47:24],
 // 					IQ_Tx_data[23:0], y2_r, y2_i); 
 
-// CicInterpMx #(.RATIO(810), .IBITS(24), .OBITS(18), .GBITS(39), .STAGES(5)) in2 (_155_52MHz, 1'd1, req1, IQ_Tx_data[47:24],
+// CicInterpMx #(.RATIO(810), .IBITS(24), .OBITS(18), .GBITS(39), .STAGES(5)) in2 (C155_52_clk, 1'd1, req1, IQ_Tx_data[47:24],
 //  					IQ_Tx_data[23:0], y2_r, y2_i); 
 
 //Upsample by 27
 //Additional bits are log2(27^(5-1)) = 19.0196, use 20bits
 wire req2;
-//Divider div_Tx_27(_155_52MHz, 1'b1, strobe_Tx_27, 30);
-CicInterpMx #(.RATIO(27), .IBITS(18), .OBITS(19), .GBITS(20), .STAGES(5)) in2_1 (_155_52MHz, req2, req1, IQ_Tx_data[35:18],
+//Divider div_Tx_27(C155_52_clk, 1'b1, strobe_Tx_27, 30);
+CicInterpMx #(.RATIO(27), .IBITS(18), .OBITS(19), .GBITS(20), .STAGES(5)) in2_1 (C155_52_clk, req2, req1, IQ_Tx_data[35:18],
   					IQ_Tx_data[17:0], y2_r1, y2_i1); 
 
 //Upsample by 30
-CicInterpMx #(.RATIO(30), .IBITS(19), .OBITS(19), .GBITS(5), .STAGES(2)) in2_2 (_155_52MHz, 1'd1, req2, y2_i1,
+CicInterpMx #(.RATIO(30), .IBITS(19), .OBITS(19), .GBITS(5), .STAGES(2)) in2_2 (C155_52_clk, 1'd1, req2, y2_i1,
   					y2_r1, y2_r, y2_i); 
 
 reg signed [17:0] I;
@@ -1706,7 +1729,7 @@ reg signed [17:0] Q;
 
 reg [15:0] CW_RF1;
 
-always @(posedge _155_52MHz)
+always @(posedge C155_52_clk)
 begin 
    CW_RF1 <= CW_RF;
    I <= ((CW_PTT & break_in) ? { 1'b0, CW_RF1, 1'b0 }: ((CW_PTT & PC_PTT) ?  { 1'b0, CW_RF1, 1'b0 } : y2_i[17:0]));  // select VNA or CW mode if active. 
@@ -1714,11 +1737,18 @@ begin
    Q <= CW_PTT ? 18'd0 : y2_r[17:0]; 					
 end
 
-wire signed [13:0] Tx1_DAC_data;
+wire signed [13:0] Tx1_DAC_data0;
 
-mix_tx mix_tx_inst(.clk(_155_52MHz), .rst(1'b0), .phi(C122_frequency_HZ_Tx), .i_data(I), .q_data(Q), .dac(Tx1_DAC_data));
+mix_tx mix_tx_inst(.clk(C155_52_clk), .rst(1'b0), .phi(C77_76_frequency_HZ_Tx), .i_data(I), .q_data(Q), .dac(Tx1_DAC_data0));
 
-//assign DAC = Tx1_DAC_data;
+//Additional registering required to meet timings
+reg signed [13:0] Tx1_DAC_data;
+always @(posedge C155_52_clk)
+   Tx1_DAC_data <= Tx1_DAC_data0;
+
+always @ (posedge DACD_clock)
+	DACD <= IO4 ? Tx1_DAC_data : 14'b0;   // disable TX DAC if IO4 active
+//	DACD <= Tx1_DAC_data;   
 
 //Generate debug signal - full scale DAC signal sinusoid at 9.72MHz
 // reg [3:0] incnt;
@@ -1745,15 +1775,8 @@ mix_tx mix_tx_inst(.clk(_155_52MHz), .rst(1'b0), .phi(C122_frequency_HZ_Tx), .i_
 //    endcase
 // 	incnt <= incnt + 4'd1; 
 // end  
-
-/*reg [13:0] temp1_DACD;
-
-always @ (posedge _155_52MHz)
-   temp1_DACD <= Tx1_DAC_data;
-*/
-always @ (posedge DACD_clock)
-//	DACD <= IO4 ? Tx1_DAC_data[21:8] : 14'b0;   // select top 14 bits for DAC data // disable TX DAC if IO4 active
-	DACD <= Tx1_DAC_data;   // Multiply output by 2, select top 14 bits for DAC data // disable TX DAC if IO4 active
+//
+//always @ (posedge DACD_clock)
 //   DACD <= test_DACD;
  
 
@@ -1816,7 +1839,7 @@ wire         run;						// set when run active
 wire 		    PC_PTT;					// set when PTT from PC active
 wire 	 [7:0] dither;					// Dither for ADC0[0], ADC1[1]...etc
 wire   [7:0] random;					// Random for ADC0[0], ADC1[1]...etc
-wire   [7:0] RxADC[0:NR-1];			// ADC or DAC that Rx(n) is connected to
+wire   [1:0] RxADC[0:NR-1];			// ADC or DAC that Rx(n) is connected to
 wire 	[15:0] RxSampleRate[0:NR-1];	// Rxn Sample rate 48/96/192 etc
 wire 			 Alex_data_ready;		// indicates Alex data available
 wire         Rx_data_ready;		// indicates Rx_specific data available
@@ -1824,7 +1847,7 @@ wire 			 Tx_data_ready;		// indicated Tx_specific data available
 wire   [7:0] Mux;						// Rx in mux mode when bit set, [0] = Rx0, [1] = Rx1 etc 
 wire   [7:0] SyncRx[0:NR-1];			// bit set selects Rx to sync or mux with
 wire 	 [7:0] EnableRx0_7;			// Rx enabled when bit set, [0] = Rx0, [1] = Rx1 etc
-wire 	 [7:0] C122_EnableRx0_7;
+wire 	 [7:0] C77_76_EnableRx0_7;
 wire  [15:0] Rx_Specific_port;	// 
 wire  [15:0] Tx_Specific_port;
 wire  [15:0] High_Prioirty_from_PC_port;
@@ -1934,7 +1957,7 @@ High_Priority_CC #(1027, NR) High_Priority_CC_inst  // parameter is port number 
 // if break_in is selected then CW_PTT can activate the FPGA_PTT. 
 // if break_in is slected then CW_PTT can generate RF otherwise PC_PTT must be active.	
 // inhibit T/R switching if IO4 TX INHIBIT is active (low)		
-assign FPGA_PTT = /*IO4 &&*/ ((break_in && CW_PTT) || PC_PTT || debounce_PTT); // CW_PTT is used when internal CW is selected
+assign FPGA_PTT = IO4 && ((break_in && CW_PTT) || PC_PTT || debounce_PTT); // CW_PTT is used when internal CW is selected
 
 // clear TR relay and Open Collectors if run not set 
 wire [31:0]runsafe_Alex_data 		  = run ? Alex_data : {Alex_data[31:26], 1'b0, Alex_data[24:0]};
@@ -1990,19 +2013,15 @@ Rx_specific_CC #(1025, NR) Rx_specific_CC_inst // parameter is port number
 				.Mux(Mux),
 				.HW_reset(HW_reset4)
 			);			
-//assign EnableRx0_7 = 8'b00000011;
-
-assign  DITH   = dither[0];      		//high turns LTC2208 dither on 
-assign  DITH_2 = dither[1]; 		
 
 // transfer C&C data in rx_clock domain, on strobe, into relevant clock domains
 cdc_mcp #(32) Tx1_freq 
- (.a_rst(C122_rst), .a_clk(rx_clock), .a_data(Tx0_frequency), .a_data_rdy(Alex_data_ready), .b_rst(C155_rst), .b_clk(_155_52MHz), .b_data(C122_frequency_HZ_Tx));
+ (.a_rst(C77_76_rst), .a_clk(rx_clock), .a_data(Tx0_frequency), .a_data_rdy(Alex_data_ready), .b_rst(C155_rst), .b_clk(C155_52_clk), .b_data(C77_76_frequency_HZ_Tx));
  
-// move Mux data into C122_clk domain
-wire [7:0]C122_Mux;
+// move Mux data into C77_76_clk domain
+wire [7:0]C77_76_Mux;
 cdc_mcp #(8) Mux_inst 
-	(.a_rst(C122_rst), .a_clk(rx_clock), .a_data(Mux), .a_data_rdy(Rx_data_ready), .b_rst(C122_rst), .b_clk(C122_clk), .b_data(C122_Mux)); 
+	(.a_rst(C77_76_rst), .a_clk(rx_clock), .a_data(Mux), .a_data_rdy(Rx_data_ready), .b_rst(C77_76_rst), .b_clk(C77_76_clk), .b_data(C77_76_Mux)); 
 
 // move Alex data into CBCLK domain
 wire  [31:0] SPI_Alex_data;
@@ -2037,8 +2056,8 @@ CC_encoder #(50, NR) CC_encoder_inst (				// 50mS update rate
 					.Dash(debounce_DASH),
 					.frequency_change(frequency_change),
 					.locked_10MHz(locked_10MHz),		// set if the 10MHz divider PLL is locked.
-					.ADC0_overload (ADC1_OVF),
-					.ADC1_overload (ADC2_OVF),
+					.ADC0_overload (ADC1_OVF & power_ADC1),
+					.ADC1_overload (ADC2_OVF & power_ADC2),
 					.Exciter_power (Exciter_power),			
 					.FWD_power (FWD_power),
 					.REV_power (REV_power),
@@ -2074,15 +2093,14 @@ assign atten1 = FPGA_PTT ? atten1_on_Tx : Attenuator1;
 // Attenuator Attenuator_ADC0 (.clk(CMCLK), .data(atten0), .ATTN_CLK(ATTN_CLK),   .ATTN_DATA(ATTN_DATA),   .ATTN_LE(ATTN_LE));
 // Attenuator Attenuator_ADC1 (.clk(CMCLK), .data(atten1), .ATTN_CLK(ATTN_CLK_2), .ATTN_DATA(ATTN_DATA_2), .ATTN_LE(ATTN_LE_2));
 
-reg DITH;
-reg DITH_2;
-reg SHDN;
-reg SHDN_2;
+wire [1:0] dither_override;
+reg power_ADC1;
+reg power_ADC2;
 
-wire [7:0] LNA_CODE = { atten0 + 6'd4, /*SHDN*/ 1'b1, /*DITH*/ 1'b1 };
-wire [7:0] LNA_CODE2 = { atten1 + 6'd4, /*SHDN_2*/ 1'b1, /*DITH_2*/ 1'b1 };
+wire [7:0] LNA_CODE = { atten0 + 6'd4, power_ADC1, dither[0] | dither_override[0] };
+wire [7:0] LNA_CODE2 = { atten1 + 6'd4, power_ADC2, dither[1] | dither_override[1] };
 
-SPI_DVGA SPI_DGA_ADC(/*M_CLK_PLL*/CBCLK, /*M_SPI_EN*/ 1'b1, { LNA_CODE, LNA_CODE2 } , LNA_CLK, LNA_DATA, LNA_LOAD);
+SPI_DVGA SPI_DGA_ADC(/*C155_52_clk*/CBCLK, /*M_SPI_EN*/ 1'b1, { LNA_CODE, LNA_CODE2 } , LNA_CLK, LNA_DATA, LNA_LOAD);
 
 
 
@@ -2158,7 +2176,7 @@ parameter fast_clock_half_second = 2_500_000; // at PHY rate (12.5MHz)
 
 // flash LED1 for ~ 0.2 second whenever the PHY receives (rgmii_rx_activ)
 Led_flash Flash_LED1(.clock(rx_clock), .signal(network_status[2]), .LED(DEBUG_LED1), .period(half_second)); 	
-//Led_flash Flash_LED1(.clock(C122_clk), .signal(C122_EnableRx0_7[1]), .LED(DEBUG_LED1), .period(fast_clock_half_second)); 	
+//Led_flash Flash_LED1(.clock(C77_76_clk), .signal(C77_76_EnableRx0_7[1]), .LED(DEBUG_LED1), .period(fast_clock_half_second)); 	
 
 // flash LED2 for ~ 0.2 second whenever the PHY transmits (rgmii_tx_active)
 Led_flash Flash_LED2(.clock(rx_clock), .signal(network_status[1]), .LED(DEBUG_LED2), .period(half_second)); 
@@ -2176,7 +2194,7 @@ Led_flash Flash_LED7(.clock(rx_clock), .signal(network_status[4]), .LED(DEBUG_LE
 Led_flash Flash_LED8(.clock(rx_clock), .signal(0), .LED(DEBUG_LED8), .period(fast_clock_half_second));
 
 // flash LED9 for ~0.2 seconds when
-Led_flash Flash_LED9(.clock(rx_clock), .signal(C122_SyncRx[0][1]), .LED(DEBUG_LED9), .period(fast_clock_half_second)); // note fast clock now - DAC data
+Led_flash Flash_LED9(.clock(rx_clock), .signal(C77_76_SyncRx[0][1]), .LED(DEBUG_LED9), .period(fast_clock_half_second)); // note fast clock now - DAC data
 
 // flash LED10 for ~0.2 seconds when 
 //Led_flash Flash_LED10(.clock(rx_clock), .signal(fifo_clear), .LED(DEBUG_LED10), .period(fast_clock_half_second));  // note fast clock now - mux
@@ -2250,6 +2268,7 @@ assign USEROUT = run ? Open_Collector[7:1] : 7'b0;
 MB_SPI_IO MB_SPI_IO_inst(.clock(CMCLK), 
                          .AIN1(AIN1), .AIN2(AIN2), .AIN3(AIN3), .AIN4(AIN4), .AIN5(AIN5), .AIN6(AIN6), 
                          .pk_detect_reset(pk_detect_reset), .pk_detect_ack(pk_detect_ack),
+                         .IO4(IO4), .dither_override(dither_override), 
                          .enable(Alex_enable[0]), .Alex_data(SPI_Alex_data),
                          .leds( {Status_LED, DEBUG_LED7, DEBUG_LED6, DEBUG_LED5, DEBUG_LED4, DEBUG_LED3, DEBUG_LED2, DEBUG_LED1} ),
                          .OC(USEROUT), .DAC(Drive_Level),

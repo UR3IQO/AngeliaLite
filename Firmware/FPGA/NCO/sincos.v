@@ -8,7 +8,7 @@ module sincos (
   sin
 );
 
-parameter CALCTYPE = 0;
+parameter CALCTYPE = 1;
 
 input                       clk;
 input               [19:0]  angle;

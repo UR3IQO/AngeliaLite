@@ -50,12 +50,12 @@ module FIRDecimRAM (
 	input	[9:0]  address_a;
 	input	[9:0]  address_b;
 	input	  clock;
-	input	[35:0]  data_a;
-	input	[35:0]  data_b;
+	input	[53:0]  data_a;
+	input	[53:0]  data_b;
 	input	  wren_a;
 	input	  wren_b;
-	output	[35:0]  q_a;
-	output	[35:0]  q_b;
+	output	[53:0]  q_a;
+	output	[53:0]  q_b;
 `ifndef ALTERA_RESERVED_QIS
 // synopsys translate_off
 `endif
@@ -66,10 +66,10 @@ module FIRDecimRAM (
 // synopsys translate_on
 `endif
 
-	wire [35:0] sub_wire0;
-	wire [35:0] sub_wire1;
-	wire [35:0] q_a = sub_wire0[35:0];
-	wire [35:0] q_b = sub_wire1[35:0];
+	wire [53:0] sub_wire0;
+	wire [53:0] sub_wire1;
+	wire [53:0] q_a = sub_wire0[53:0];
+	wire [53:0] q_b = sub_wire1[53:0];
 
 	altsyncram	altsyncram_component (
 				.clock0 (clock),
@@ -117,8 +117,8 @@ module FIRDecimRAM (
 		altsyncram_component.read_during_write_mode_port_b = "NEW_DATA_NO_NBE_READ",
 		altsyncram_component.widthad_a = 10,
 		altsyncram_component.widthad_b = 10,
-		altsyncram_component.width_a = 36,
-		altsyncram_component.width_b = 36,
+		altsyncram_component.width_a = 54,
+		altsyncram_component.width_b = 54,
 		altsyncram_component.width_byteena_a = 1,
 		altsyncram_component.width_byteena_b = 1,
 		altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
@@ -179,10 +179,10 @@ endmodule
 // Retrieval info: PRIVATE: USE_DIFF_CLKEN NUMERIC "0"
 // Retrieval info: PRIVATE: UseDPRAM NUMERIC "1"
 // Retrieval info: PRIVATE: VarWidth NUMERIC "0"
-// Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "36"
-// Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "36"
-// Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "36"
-// Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "36"
+// Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "54"
+// Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "54"
+// Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "54"
+// Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "54"
 // Retrieval info: PRIVATE: WRADDR_ACLR_B NUMERIC "0"
 // Retrieval info: PRIVATE: WRADDR_REG_B NUMERIC "1"
 // Retrieval info: PRIVATE: WRCTRL_ACLR_B NUMERIC "0"
@@ -210,29 +210,29 @@ endmodule
 // Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_B STRING "NEW_DATA_NO_NBE_READ"
 // Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "10"
 // Retrieval info: CONSTANT: WIDTHAD_B NUMERIC "10"
-// Retrieval info: CONSTANT: WIDTH_A NUMERIC "36"
-// Retrieval info: CONSTANT: WIDTH_B NUMERIC "36"
+// Retrieval info: CONSTANT: WIDTH_A NUMERIC "54"
+// Retrieval info: CONSTANT: WIDTH_B NUMERIC "54"
 // Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "1"
 // Retrieval info: CONSTANT: WIDTH_BYTEENA_B NUMERIC "1"
 // Retrieval info: CONSTANT: WRCONTROL_WRADDRESS_REG_B STRING "CLOCK0"
 // Retrieval info: USED_PORT: address_a 0 0 10 0 INPUT NODEFVAL "address_a[9..0]"
 // Retrieval info: USED_PORT: address_b 0 0 10 0 INPUT NODEFVAL "address_b[9..0]"
 // Retrieval info: USED_PORT: clock 0 0 0 0 INPUT VCC "clock"
-// Retrieval info: USED_PORT: data_a 0 0 36 0 INPUT NODEFVAL "data_a[35..0]"
-// Retrieval info: USED_PORT: data_b 0 0 36 0 INPUT NODEFVAL "data_b[35..0]"
-// Retrieval info: USED_PORT: q_a 0 0 36 0 OUTPUT NODEFVAL "q_a[35..0]"
-// Retrieval info: USED_PORT: q_b 0 0 36 0 OUTPUT NODEFVAL "q_b[35..0]"
+// Retrieval info: USED_PORT: data_a 0 0 54 0 INPUT NODEFVAL "data_a[53..0]"
+// Retrieval info: USED_PORT: data_b 0 0 54 0 INPUT NODEFVAL "data_b[53..0]"
+// Retrieval info: USED_PORT: q_a 0 0 54 0 OUTPUT NODEFVAL "q_a[53..0]"
+// Retrieval info: USED_PORT: q_b 0 0 54 0 OUTPUT NODEFVAL "q_b[53..0]"
 // Retrieval info: USED_PORT: wren_a 0 0 0 0 INPUT GND "wren_a"
 // Retrieval info: USED_PORT: wren_b 0 0 0 0 INPUT GND "wren_b"
 // Retrieval info: CONNECT: @address_a 0 0 10 0 address_a 0 0 10 0
 // Retrieval info: CONNECT: @address_b 0 0 10 0 address_b 0 0 10 0
 // Retrieval info: CONNECT: @clock0 0 0 0 0 clock 0 0 0 0
-// Retrieval info: CONNECT: @data_a 0 0 36 0 data_a 0 0 36 0
-// Retrieval info: CONNECT: @data_b 0 0 36 0 data_b 0 0 36 0
+// Retrieval info: CONNECT: @data_a 0 0 54 0 data_a 0 0 54 0
+// Retrieval info: CONNECT: @data_b 0 0 54 0 data_b 0 0 54 0
 // Retrieval info: CONNECT: @wren_a 0 0 0 0 wren_a 0 0 0 0
 // Retrieval info: CONNECT: @wren_b 0 0 0 0 wren_b 0 0 0 0
-// Retrieval info: CONNECT: q_a 0 0 36 0 @q_a 0 0 36 0
-// Retrieval info: CONNECT: q_b 0 0 36 0 @q_b 0 0 36 0
+// Retrieval info: CONNECT: q_a 0 0 54 0 @q_a 0 0 54 0
+// Retrieval info: CONNECT: q_b 0 0 54 0 @q_b 0 0 54 0
 // Retrieval info: GEN_FILE: TYPE_NORMAL FIRDecimRAM.v TRUE
 // Retrieval info: GEN_FILE: TYPE_NORMAL FIRDecimRAM.inc FALSE
 // Retrieval info: GEN_FILE: TYPE_NORMAL FIRDecimRAM.cmp FALSE

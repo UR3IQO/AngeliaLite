@@ -113,7 +113,7 @@ endgenerate
 //                            output rounding
 //------------------------------------------------------------------------------
 always @(posedge clock)
-   if (in_strobe && sample_no == (DECIMATION-1))
+   if (out_strobe)
       out_data <= comb_data[STAGES][ACC_WIDTH-1:ACC_WIDTH-OUT_WIDTH] +  comb_data[STAGES][ACC_WIDTH-OUT_WIDTH-1];
 
 

@@ -18,6 +18,8 @@ module MB_SPI_IO (
    output reg [11:0] AIN4,
    output reg [11:0] AIN5,
    output reg [11:0] AIN6,
+   output reg [1:0] dither_override,
+   output reg IO4,
 
    input pk_detect_reset,
    output reg pk_detect_ack,
@@ -53,6 +55,8 @@ begin
    if(LOAD_1 == 2'b10)
    begin
       //Negative edge of LOAD found
+      //FPGA => MCU
+      //  DAC[8] | OC[7] | 0 | pk_detect_reset[1] | ALEX enable[1] | ALEX data[48] | LEDs[8]                        
       data <= { DAC, 6'b0, OC[0], OC[1], OC[2], OC[3], OC[4], OC[5], OC[6], 1'b0, pk_detect_reset, enable, Alex_data[47:0], leds[7:0] };
    end
    else if(LOAD_1 == 2'b01)
@@ -65,6 +69,8 @@ begin
       AIN5 <= data[59:48];
       AIN6 <= data[71:60];
       pk_detect_ack <= data[72];
+      dither_override <= data[74:73];
+      IO4 <= data[75];
    end
    else if(LOAD_1 == 2'b00)
    begin
@@ -81,5 +87,17 @@ begin
    CLK_1 <= { CLK_1[0], CLK };
 end
 
+initial
+begin
+      AIN1 <= 12'b0;
+      AIN2 <= 12'b0;
+      AIN3 <= 12'b0;
+      AIN4 <= 12'b0;
+      AIN5 <= 12'b0;
+      AIN6 <= 12'b0;
+      pk_detect_ack <= 1'b0;
+      dither_override <= 2'b11;
+      IO4 <= 1'b0;
+end
 
 endmodule

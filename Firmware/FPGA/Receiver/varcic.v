@@ -64,8 +64,8 @@ always @(posedge clock)
       end
     end
 
-  else
-    out_strobe <= 0;
+   else
+     out_strobe <= 0;
 
 
 //------------------------------------------------------------------------------
@@ -165,7 +165,8 @@ localparam MSB36 =  (IN_WIDTH + GROWTH36) - 1;           // 18 + 25 - 1 = 42
 localparam LSB36 =  (IN_WIDTH + GROWTH36) - OUT_WIDTH;   // 25 
 
 always @(posedge clock)
-   if (in_strobe && sample_no == (decimation - 1))
+begin
+   if (out_strobe)
       case (decimation)
          //    3: out_data <= comb_data[STAGES][MSB3:LSB3]   + comb_data[STAGES][LSB3-1];
          //    6: out_data <= comb_data[STAGES][MSB6:LSB6] + comb_data[STAGES][LSB6-1];
@@ -175,14 +176,11 @@ always @(posedge clock)
          //   18: out_data <= comb_data[STAGES][MSB18:LSB18] + comb_data[STAGES][LSB18-1];
          //   36: out_data <= comb_data[STAGES][MSB36:LSB36] + comb_data[STAGES][LSB36-1];
  
-         // 5: out_data <= comb_data[STAGES][MSB5:LSB5] + (comb_data[STAGES][LSB5-1:0] == {1'b1,{(LSB5-1){1'b0}}}) ? comb_data[STAGES][LSB5] : comb_data[STAGES][LSB5-1];
-         // 10: out_data <= comb_data[STAGES][MSB10:LSB10] + (comb_data[STAGES][LSB10-1:0] == {1'b1,{(LSB10-1){1'b0}}}) ? comb_data[STAGES][LSB10] : comb_data[STAGES][LSB10-1];         
-
           5: out_data <= comb_data[STAGES][MSB5:LSB5] + comb_data[STAGES][LSB5-1];
          10: out_data <= comb_data[STAGES][MSB10:LSB10] + comb_data[STAGES][LSB10-1];
          20: out_data <= comb_data[STAGES][MSB20:LSB20] + comb_data[STAGES][LSB20-1];  
       endcase
-
+end
 
 
 endmodule

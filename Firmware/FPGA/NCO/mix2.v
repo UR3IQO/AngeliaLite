@@ -63,10 +63,10 @@ always @(posedge clk_2x) begin
   scos_q <= cos[18] ? scos[18:1] : cos[18:1];
 end
 
-always @(posedge clk_2x) begin
+always @(posedge clk) begin
   adci0 <= adc0;
-  adci1 <= adc1;
   adcq0 <= adc0;
+  adci1 <= adc1;
   adcq1 <= adc1;
 end
 

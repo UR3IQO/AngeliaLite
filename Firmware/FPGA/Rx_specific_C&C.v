@@ -115,7 +115,7 @@ module Rx_specific_CC
 				output  reg  [7:0] random,
 				output  reg  [7:0] EnableRx0_7,
 				output  reg [15:0] RxSampleRate[0:NR-1],
-				output  reg  [7:0] RxADC[0:NR-1],
+				output  reg  [1:0] RxADC[0:NR-1],
 				output  reg  [7:0] SyncRx[0:NR-1],
 				output  reg  [7:0] Mux,
 				output  reg  Rx_data_ready,
@@ -168,7 +168,7 @@ begin
 					for (k = 0, j = 0; j < NR ; k = k + 6, j++)
 					begin 						
 						case (byte_number)
-						 k + 17 : RxADC[j]  				  <= udp_rx_data; 
+						 k + 17 : RxADC[j]  				  <= udp_rx_data[1:0]; //use only 2 bits cause we have just ADC1/ADC2 and DAC 
 						 k + 18 : RxSampleRate[j][15:8] <= udp_rx_data;
 						 k + 19 : RxSampleRate[j][7:0]  <= udp_rx_data;
 						endcase

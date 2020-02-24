@@ -128,7 +128,7 @@ wire signed [19:0] cic_outdata_Q1;
 
 
 //I channel
-varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(18))
+varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(22))
   varcic_inst_I1(
     .clock(clock),
     .in_strobe(cic_outstrobe_1),
@@ -139,7 +139,7 @@ varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(18))
     );
 
 //Q channel
-varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(18))
+varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(22))
   varcic_inst_Q1(
     .clock(clock),
     .in_strobe(cic_outstrobe_1),
@@ -150,18 +150,17 @@ varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(18))
     );
 
 wire cic_outstrobe_2;
-wire signed [17:0] cic_outdata_I2;
-wire signed [17:0] cic_outdata_Q2;
+wire signed [21:0] cic_outdata_I2;
+wire signed [21:0] cic_outdata_Q2;
 
 
-//firX5R5 fir2 (clock, cic_outstrobe_2, cic_outdata_I2, cic_outdata_Q2, out_strobe, out_data_I2, out_data_Q2);
-FIRDecim fir2 (.clock(clock), 
-               .strobe_in(cic_outstrobe_2), 
-               .x_real(cic_outdata_I2), 
-               .x_imag(cic_outdata_Q2), 
-               .strobe_out(out_strobe), 
-               .y_real(out_data_I2), 
-               .y_imag(out_data_Q2));
+FIRDecim firdecim_inst (.clock(clock), 
+                        .strobe_in(cic_outstrobe_2), 
+                        .x_real(cic_outdata_I2), 
+                        .x_imag(cic_outdata_Q2), 
+                        .strobe_out(out_strobe), 
+                        .y_real(out_data_I2), 
+                        .y_imag(out_data_Q2));
 
 
 endmodule

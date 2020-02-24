@@ -22,7 +22,7 @@ output    [18:0]  cos;
 logic [31:0]      angle0 = 32'h00;
 logic [31:0]      angle1 = 32'h00;
 
-parameter         CALCTYPE = 0;
+parameter         CALCTYPE = 1;
 
 
 always @(posedge clk_2x) begin

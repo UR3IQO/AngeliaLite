@@ -28,7 +28,7 @@
 //                procedure is run (not sure it is correct behavior).
 //                If renewal failed, DHCP client should start REBIND, so
 //                it should restart DHCP procedure from the start and
-//                use multicast DHCPREQUECT packet.
+//                use multicast DHCPREQUEST packet.
 //                This is particular important cause otherwise it may not 
 //                obtain address when the ethernet cable was unplugged and 
 //                then plugged back to the board.
