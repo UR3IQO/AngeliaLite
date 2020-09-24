@@ -4,24 +4,24 @@
 
 
 module FIRDecim (	
-	input clock,
-	input strobe_in,									// new sample is available
-	input signed [IBITS-1:0] x_real,			// x is the sample input
-	input signed [IBITS-1:0] x_imag,
-	output reg strobe_out,							// new output is available
-	output reg signed [OBITS-1:0] y_real,	// y is the filtered output
-	output reg signed [OBITS-1:0] y_imag);
-		
-	parameter
-	   IBITS	      = 22,	  //input width	
-      HBITS       = 18,   //taps width
-		OBITS			= 24,	  //output width
-      RATIO       = 9,    //decimation ratio
-		TAPS 			= 774,  //taps number, must be even by RATIO and 2
-   	ABITS			= 35,   //accumulator size fractional part
-      GBITS       = 4;    //accumulator size integer part and sign bit
+   input clock,
+   input strobe_in,									// new sample is available
+   input signed [IBITS-1:0] x_real,			// x is the sample input
+   input signed [IBITS-1:0] x_imag,
+   output reg strobe_out,							// new output is available
+   output reg signed [OBITS-1:0] y_real,	// y is the filtered output
+   output reg signed [OBITS-1:0] y_imag);
+      
+   parameter
+      IBITS	 =  22,	  //input width	
+      HBITS  =  18,   //taps width
+      OBITS	 =  24,	  //output width
+      RATIO  =  9,    //decimation ratio
+      TAPS 	 =  774,  //taps number, must be even by RATIO and 2
+      ABITS	 =  35,   //accumulator size fractional part
+      GBITS  =  4;    //accumulator size integer part and sign bit
 
-	localparam ADDRBITS	= 10,				//address bits for 18/54 X 1024 rom/ram blocks
+   localparam ADDRBITS  =  10,			//address bits for 18/54 X 1024 rom/ram blocks
               MBITS = IBITS + HBITS;   //multiple-add reslut size for h*(x[i]+x[N-i]) operation
                                        //We are adding two samples of IBITS width, the result is IBITS+1 width
                                        //After multiplication we have result of HBITS+IBITS+1 width with 

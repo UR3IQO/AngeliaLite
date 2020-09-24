@@ -50,6 +50,7 @@ reg [5:0] rate;
 always @ (sample_rate)				
 begin 
    case (sample_rate)	
+      16'd24: rate <= 6'd40;
       16'd48: rate <= 6'd20;
       16'd96: rate <= 6'd10;		 
       16'd192: rate <= 6'd5;		  
@@ -108,6 +109,12 @@ wire signed [19:0] cic_outdata_Q1;
 
 //2nd CIC
 //5 stages CIC decimator
+//R = 40, output samplerate 9*24kSPS
+//Amin = -123.218425dB
+//BWmin = -0.220529dB
+//ACCgrow = 27.000000 bits
+//OUTgrow = 3.000000 bits
+//
 //R = 20, output samplerate 9*48kSPS
 //Amin = -123.092295dB
 //BWmin = -0.219813dB
@@ -128,7 +135,7 @@ wire signed [19:0] cic_outdata_Q1;
 
 
 //I channel
-varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(22))
+varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(47), .OUT_WIDTH(22))
   varcic_inst_I1(
     .clock(clock),
     .in_strobe(cic_outstrobe_1),
@@ -139,7 +146,7 @@ varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(22))
     );
 
 //Q channel
-varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(42), .OUT_WIDTH(22))
+varcic #(.STAGES(5), .IN_WIDTH(20), .ACC_WIDTH(47), .OUT_WIDTH(22))
   varcic_inst_Q1(
     .clock(clock),
     .in_strobe(cic_outstrobe_1),

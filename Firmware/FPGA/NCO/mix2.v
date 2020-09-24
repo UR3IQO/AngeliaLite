@@ -38,7 +38,8 @@ logic  signed [17:0]  i_rounded, q_rounded;
 
 logic signed  [13:0]  adci0, adci1, adcq0, adcq1;
 
-logic                 state = 1'b0;
+wire state;
+assign state = clk;
 
 
 nco2 #(.CALCTYPE(CALCTYPE)) nco2_i (
@@ -51,9 +52,6 @@ nco2 #(.CALCTYPE(CALCTYPE)) nco2_i (
   .sin(sin)
 );
 
-always @(posedge clk_2x) begin
-  state <= ~state;
-end
 
 assign ssin = {sin[18],~sin[17:0]} + 19'h01;
 assign scos = {cos[18],~cos[17:0]} + 19'h01;
@@ -63,33 +61,44 @@ always @(posedge clk_2x) begin
   scos_q <= cos[18] ? scos[18:1] : cos[18:1];
 end
 
-always @(posedge clk) begin
-  adci0 <= adc0;
-  adcq0 <= adc0;
-  adci1 <= adc1;
-  adcq1 <= adc1;
+always @(posedge clk) 
+begin
+   adci0 <= adc0;
+   adcq0 <= adc0;
+   adci1 <= adc1;
+   adcq1 <= adc1;
 end
 
-always @(posedge clk_2x) begin
-  if (state) begin
-    i_data_d <= $signed(adci0) * scos_q;
-    q_data_d <= $signed(adcq0) * ssin_q;
-  end else begin
-    i_data_d <= $signed(adci1) * scos_q;
-    q_data_d <= $signed(adcq1) * ssin_q;
-  end  
+always @(posedge clk_2x) 
+begin
+ if (state) 
+   begin
+      i_data_d <= $signed(adci0) * scos_q;
+      q_data_d <= $signed(adcq0) * ssin_q;
+   end 
+   else 
+   begin
+      i_data_d <= $signed(adci1) * scos_q;
+      q_data_d <= $signed(adcq1) * ssin_q;
+   end  
 end
 
-always@(posedge clk_2x) begin
+always@(posedge clk_2x) 
+begin
    i_rounded <= i_data_d[30:13] + {17'h00,i_data_d[12]};
-   q_rounded <= q_data_d[30:13] + {17'h00,q_data_d[12]};
+   q_rounded <= q_data_d[30:13] + {17'h00,q_data_d[12]};      
 end
 
-always @(posedge clk_2x) begin
-  if (state) begin
+
+always @(posedge clk_2x) 
+begin
+   if (state) 
+  begin
     mixdata0_i <= i_rounded;
     mixdata0_q <= q_rounded;
-  end else begin
+  end 
+  else 
+  begin
     mixdata1_i <= i_rounded;
     mixdata1_q <= q_rounded;
   end

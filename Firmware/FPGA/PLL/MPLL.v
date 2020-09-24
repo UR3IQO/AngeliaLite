@@ -13,13 +13,14 @@ module MPLL(
    );
 
    wire r_clk;
-   wire v_clk;
 
-   //Divide 10MHz reference down to 80kHz
-   Divider #(.WIDTH(7))  DivR(ref_clk /*clock*/, 1 /*strobe_in*/, r_clk /*strobe_out*/, 125 /*ratio*/);
- 
-  //Divide 155.52MHz VCXO down to 80kHz
-   Divider #(.WIDTH(11)) DivN(vcxo_clk /*clock*/, 1 /*strobe_in*/, v_clk /*strobe_out*/, 1944 /*ratio*/);
+   reg v_clk;
+   //Divide 10MHz reference down to 400kHz
+
+   Divider #(.WIDTH(5))  DivR(ref_clk /*clock*/, 1 /*strobe_in*/, r_clk /*strobe_out*/, 25 /*ratio*/);
+
+   always @(posedge vcxo_clk)
+      v_clk = !v_clk;
 
    //Compare phases
    PFD pfd80k(v_clk /*osc*/, r_clk /*reference*/, pol /*PFD output polarity*/, enable /*PFD output enable*/);

@@ -70,9 +70,14 @@ always @ (posedge clock)
 begin 
 
 
-if (reset) wrenable <= 0;	
-
-else begin 
+if (reset) 
+begin
+		wrenable <= 0;	
+		fifo_clear <= 1'b1;
+		state <= 0;
+end
+else 
+begin 
 	case(state)
 	
 	0: begin

@@ -164,6 +164,9 @@ localparam LSB18 =  (IN_WIDTH + GROWTH18) - OUT_WIDTH;   // 17
 localparam MSB36 =  (IN_WIDTH + GROWTH36) - 1;           // 18 + 25 - 1 = 42
 localparam LSB36 =  (IN_WIDTH + GROWTH36) - OUT_WIDTH;   // 25 
 
+localparam MSB40 =  (IN_WIDTH + GROWTH40) - 1;           // 18 + 27 - 1 = 42
+localparam LSB40 =  (IN_WIDTH + GROWTH40) - OUT_WIDTH;   // 25 
+
 always @(posedge clock)
 begin
    if (out_strobe)
@@ -179,6 +182,7 @@ begin
           5: out_data <= comb_data[STAGES][MSB5:LSB5] + comb_data[STAGES][LSB5-1];
          10: out_data <= comb_data[STAGES][MSB10:LSB10] + comb_data[STAGES][LSB10-1];
          20: out_data <= comb_data[STAGES][MSB20:LSB20] + comb_data[STAGES][LSB20-1];  
+         40: out_data <= comb_data[STAGES][MSB40:LSB40] + comb_data[STAGES][LSB40-1];  
       endcase
 end
 

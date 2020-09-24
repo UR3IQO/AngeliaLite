@@ -19,6 +19,8 @@ module MB_SPI_IO (
    output reg [11:0] AIN5,
    output reg [11:0] AIN6,
    output reg [1:0] dither_override,
+   output reg reference_en, 
+   output reg pll_on,
    output reg IO4,
 
    input pk_detect_reset,
@@ -71,6 +73,8 @@ begin
       pk_detect_ack <= data[72];
       dither_override <= data[74:73];
       IO4 <= data[75];
+      reference_en <= data[76];
+      pll_on <= data[77];
    end
    else if(LOAD_1 == 2'b00)
    begin

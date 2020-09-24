@@ -79,7 +79,12 @@ reg [7:0]previous_Sync;
 always @ (posedge clock)
 begin 
 
-if (reset) wrenable <= 0;	
+if (reset) 
+begin
+		wrenable <= 0;	
+		fifo_clear <= 1'b1;
+		state <= 0;
+end	
 
 else begin 
 	case(state)
