@@ -1419,8 +1419,21 @@ sidetone sidetone_inst( .clock(CLRCLK), .enable(sidetone), .tone_freq(tone_freq)
  
 */
 
+reg [13:0] reg_ADC[0:1];
 reg [13:0] temp_ADC[0:1];
 reg [13:0] temp_DACD;
+
+always @ (posedge C155_52_clk) 
+begin 
+   if(ADC1_CLK)reg_ADC[0] <= ADC1;  	
+	if(ADC2_CLK)reg_ADC[1] <= ADC2;
+end 
+
+always @ (posedge C77_76_clk) 
+begin 
+   temp_ADC[0] <= reg_ADC[0];  // not set so just copy data	 	
+	temp_ADC[1] <= reg_ADC[1];
+end 
 
 always @ (posedge C155_52_clk)
    if(C77_76_clk)temp_DACD <= Tx1_DAC_data;
@@ -1450,11 +1463,7 @@ always @ (posedge C155_52_clk)
 // 	temp_ADC[1] <= lfsr[0] ? 14'h0001 : 14'h3FFF;//ADC2;
 // end
 
-always @ (posedge C77_76_clk) 
-begin 
-   temp_ADC[0] <= ADC1;  // not set so just copy data	 	
-	temp_ADC[1] <= ADC2;
-end 
+
 
 
 
@@ -1501,17 +1510,17 @@ endgenerate
 
 always @ (posedge C77_76_clk) begin
     select_input_RX[0] <= C77_76_RxADC[0] == 2'd1 ? temp_ADC[1] : temp_ADC[0];
-    select_input_RX[1] <= C77_76_RxADC[1] == 2'd2 ? temp_DACD : (C77_76_RxADC[1] == 8'd1 ? temp_ADC[1] : temp_ADC[0]); 
+    select_input_RX[1] <= C77_76_RxADC[1] == 2'd2 ? temp_DACD : (C77_76_RxADC[1] == 2'd1 ? temp_ADC[1] : temp_ADC[0]); 
     select_input_RX[2] <= C77_76_RxADC[2] == 2'd1 ? temp_ADC[1] : temp_ADC[0]; 
     select_input_RX[3] <= C77_76_RxADC[3] == 2'd1 ? temp_ADC[1] : temp_ADC[0]; 
     
     power_ADC1 <= C77_76_EnableRx0_7[0] & (C77_76_RxADC[0] == 2'd0)
-                | C77_76_EnableRx0_7[1] & (C77_76_RxADC[1] == 2'd0)
+                | (C77_76_EnableRx0_7[1] | C77_76_SyncRx[0][1]) & (C77_76_RxADC[1] == 2'd0)
                 | C77_76_EnableRx0_7[2] & (C77_76_RxADC[2] == 2'd0)
                 | C77_76_EnableRx0_7[3] & (C77_76_RxADC[3] == 2'd0);
 
     power_ADC2 <= C77_76_EnableRx0_7[0] & (C77_76_RxADC[0] == 2'd1)
-                | C77_76_EnableRx0_7[1] & (C77_76_RxADC[1] == 2'd1)
+                | (C77_76_EnableRx0_7[1] | C77_76_SyncRx[0][1]) & (C77_76_RxADC[1] == 2'd1)
                 | C77_76_EnableRx0_7[2] & (C77_76_RxADC[2] == 2'd1)
                 | C77_76_EnableRx0_7[3] & (C77_76_RxADC[3] == 2'd1);
 
@@ -1562,7 +1571,7 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst0(   
 	//control
-	.reset(fifo_clear || !C77_76_run || !C77_76_EnableRx0_7[0]),
+	.reset(fifo_clear || !C77_76_run),
 	.clock(C77_76_clk),
 	//input
 	.sample_rate(C77_76_SampleRate[0]),
@@ -1577,7 +1586,7 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst1(   
 	//control
-	.reset(fifo_clear || !C77_76_run || !C77_76_EnableRx0_7[1]),
+	.reset(fifo_clear || !C77_76_run),
 	.clock(C77_76_clk),
 	//input
 	.sample_rate( C77_76_SampleRate[1]),
@@ -1607,7 +1616,7 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst2(   
 	//control
-	.reset(!C77_76_run || !C77_76_EnableRx0_7[2]),
+	.reset(!C77_76_run),
 	.clock(C77_76_clk),
 	.sample_rate(C77_76_SampleRate[2]),
 	.out_strobe(strobe[2]),
@@ -1622,7 +1631,7 @@ wire [17:0] mix_data_Q[0:NR-1];
 
 	receiver receiver_inst3(   
 	//control
-	.reset(!C77_76_run || !C77_76_EnableRx0_7[3]),  
+	.reset(!C77_76_run),  
 	.clock(C77_76_clk),
 	.sample_rate(C77_76_SampleRate[3]),
 	.out_strobe(strobe[3]),
@@ -2191,16 +2200,19 @@ parameter fast_clock_half_second = 2_500_000; // at PHY rate (12.5MHz)
 
 // flash LED1 for ~ 0.2 second whenever the PHY receives (rgmii_rx_activ)
 Led_flash Flash_LED1(.clock(rx_clock), .signal(network_status[2]), .LED(DEBUG_LED1), .period(half_second)); 	
-//Led_flash Flash_LED1(.clock(C77_76_clk), .signal(C77_76_EnableRx0_7[1]), .LED(DEBUG_LED1), .period(fast_clock_half_second)); 	
+//Led_flash Flash_LED1(.clock(rx_clock), .signal(C77_76_EnableRx0_7[0]), .LED(DEBUG_LED1), .period(fast_clock_half_second)); 	
 
 // flash LED2 for ~ 0.2 second whenever the PHY transmits (rgmii_tx_active)
 Led_flash Flash_LED2(.clock(rx_clock), .signal(network_status[1]), .LED(DEBUG_LED2), .period(half_second)); 
+//Led_flash Flash_LED2(.clock(rx_clock), .signal(C77_76_EnableRx0_7[1]), .LED(DEBUG_LED2), .period(fast_clock_half_second)); 	
 
 // flash LED3 for ~0.2 seconds whenever ip_rx_enable ????
 Led_flash Flash_LED3(.clock(rx_clock), .signal(0), .LED(DEBUG_LED3), .period(half_second));
+//Led_flash Flash_LED3(.clock(rx_clock), .signal(C77_76_EnableRx0_7[2]), .LED(DEBUG_LED3), .period(fast_clock_half_second)); 	
 
 // flash LED4 for ~0.2 seconds whenever traffic to the boards MAC address is received 
 Led_flash Flash_LED4(.clock(rx_clock), .signal(network_status[0]), .LED(DEBUG_LED4), .period(half_second));
+//Led_flash Flash_LED4(.clock(rx_clock), .signal(C77_76_EnableRx0_7[3]), .LED(DEBUG_LED4), .period(fast_clock_half_second)); 	
 
 // flash LED7 for ~0.2 seconds whenever udp_rx_active
 Led_flash Flash_LED7(.clock(rx_clock), .signal(network_status[4]), .LED(DEBUG_LED7), .period(half_second));		// udp_rx_active
