@@ -133,6 +133,11 @@ begin
 	
 	{memory[45],  temp[45]}  <= {temp[45],  Supply_volts[15:8]}; 								
 	{memory[46],  temp[46]}  <= {temp[46],  Supply_volts[7:0]}; 
+
+	{memory[47],  temp[47]}  <= {temp[47], User_ADC2[15:8]};
+	{memory[48],  temp[48]}  <= {temp[48], User_ADC2[7:0]};
+	{memory[49],  temp[49]}  <= {temp[49], User_ADC1[15:8]};		// User_ADC1 input 
+	{memory[50],  temp[50]}  <= {temp[50], User_ADC1[7:0]};							
 	
 	// RAM 47 - 50 not presently used - intialised to zero
 	{memory[51],  temp[51]}  <= {temp[51], User_ADC2[15:8]};
@@ -155,7 +160,7 @@ assign rate = FPGA_PTT ? 8'd1 : update_rate;   // if Txing then use 1mS update r
 
 always @ (posedge clock)	
 begin
-	if (counter >= (rate * 125000)) begin	
+	if (counter >= (rate * 12500)) begin	
 		counter <= 25'd0;
 		if (state == 0) state <= 1;	  // no need to send data if its already in progress	
 	end
