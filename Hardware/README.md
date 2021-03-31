@@ -14,7 +14,7 @@ Do not install the following components:
 - R50
 - R59
 
-##SDRModule v2.B
+## SDRModule v2.B
 Do not install the following components:
 - R35
 - R72
